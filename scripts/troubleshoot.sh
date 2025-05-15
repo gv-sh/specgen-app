@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Mac development troubleshooting script
-echo "🔍 SpecGen Mac Troubleshooting"
-echo "================================"
+# SpecGen Troubleshooting Script  
+echo "🔍 SpecGen Troubleshooting"
+echo "========================="
 
 # Check Node.js and npm
 echo "📦 Node.js/npm versions:"
@@ -15,8 +15,12 @@ echo "📁 Component directories:"
 for dir in server admin user; do
     if [ -d "$dir" ]; then
         echo "  ✓ $dir exists"
+        if [ -f "$dir/package.json" ]; then
+            version=$(cat "$dir/package.json" | grep '"version"' | sed 's/.*"version": "\([^"]*\)".*/\1/')
+            echo "    Version: $version"
+        fi
     else
-        echo "  ❌ $dir missing - run npm run setup:mac"
+        echo "  ❌ $dir missing - run npm run setup"
     fi
 done
 echo ""
@@ -46,19 +50,39 @@ echo ""
 echo "🌐 Port status:"
 for port in 3000 3001 3002; do
     if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
-        echo "  ❌ Port $port in use"
+        process=$(lsof -Pi :$port -sTCP:LISTEN -t | xargs ps -o comm= -p)
+        echo "  ❌ Port $port in use by: $process"
     else
         echo "  ✓ Port $port available"
     fi
 done
 echo ""
 
-# Check node_modules
+# Check dependencies
 echo "📚 Dependencies:"
-for dir in . server admin user; do
+for dir in server admin user; do
     if [ -d "$dir/node_modules" ]; then
         echo "  ✓ $dir/node_modules exists"
     else
-        echo "  ❌ $dir/node_modules missing - run npm install"
+        echo "  ❌ $dir/node_modules missing - run: cd $dir && npm install"
+    fi
+done
+echo ""
+
+# Check for common CSS/styling issues
+echo "🎨 CSS and Build files:"
+for dir in admin user; do
+    if [ -d "$dir" ]; then
+        echo "  $dir:"
+        if [ -f "$dir/src/index.css" ]; then
+            echo "    ✓ index.css exists"
+        else
+            echo "    ❌ index.css missing"
+        fi
+        if [ -f "$dir/tailwind.config.js" ]; then
+            echo "    ✓ tailwind.config.js exists"
+        else
+            echo "    ⚠️  tailwind.config.js missing (may be normal)"
+        fi
     fi
 done

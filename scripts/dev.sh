@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Development server for source repositories
+# SpecGen Development Script
 set -e
 
-echo "🚀 Starting SpecGen development from source..."
+echo "🚀 Starting SpecGen development servers..."
 
 # Function to check if port is available
 check_port() {
@@ -25,29 +25,28 @@ for port in 3000 3001 3002; do
     fi
 done
 
-# Verify source directories exist
+# Verify directories exist
 for dir in server admin user; do
     if [ ! -d "$dir" ]; then
-        echo "❌ $dir directory not found. Run 'npm run setup:source' first."
+        echo "❌ $dir directory not found. Run 'npm run setup' first."
         exit 1
     fi
 done
 
-# Ensure all dependencies are installed
-echo "Checking dependencies..."
-if [ ! -d "server/node_modules" ] || [ ! -d "admin/node_modules" ] || [ ! -d "user/node_modules" ]; then
-    echo "Installing missing dependencies..."
-    cd server && npm install
-    cd ../admin && npm install
-    cd ../user && npm install
-    cd ..
-fi
+# Check if dependencies are installed
+for dir in server admin user; do
+    if [ ! -d "$dir/node_modules" ]; then
+        echo "Installing $dir dependencies..."
+        cd "$dir" && npm install
+        cd ..
+    fi
+done
 
 # Set development environment
 export NODE_ENV=development
 
 # Start development servers
-echo "Starting development servers from source..."
+echo "Starting development servers..."
 npx concurrently \
     --prefix "[{name}]" \
     --names "server,admin,user" \

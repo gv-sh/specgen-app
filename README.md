@@ -8,43 +8,35 @@ A unified deployment package for the SpecGen speculative fiction generator platf
 - **Admin**: React admin interface for content management
 - **User**: React user interface for story generation
 
-## Local Development
+## Quick Start
 
-### Option 1: From Source Repositories (Recommended for Development)
-```bash
-# Setup from actual source code (includes Tailwind configs)
-npm run setup:source
+1. **Setup**:
+   ```bash
+   npm run setup
+   ```
 
-# Add your OpenAI API key to server/.env
+2. **Add OpenAI API Key** to `server/.env`
 
-# Start development servers
-npm run dev:source
-```
+3. **Start Development**:
+   ```bash
+   npm run dev
+   ```
 
-### Option 2: From NPM Packages (For Testing Packages)
-```bash
-# Setup from published npm packages
-npm run setup:mac
+## Access URLs
 
-# Add your OpenAI API key to server/.env
-
-# Start development servers (CSS might be limited)
-npm run dev:mac
-```
-
-Access:
 - User Interface: http://localhost:3002
 - Admin Interface: http://localhost:3001
 - API: http://localhost:3000
 
-## Production Build
+## Production Deployment
 
+### Build
 ```bash
 npm run build
 npm start
 ```
 
-## AWS Deployment
+### AWS Deployment
 
 1. Launch Ubuntu 22.04 instance with SSH access
 2. Run deployment script:
@@ -56,52 +48,35 @@ chmod +x deploy.sh
 sudo ./deploy.sh
 ```
 
-## Maintenance Commands
+## Management Commands
 
 ```bash
 # Stop services
-sudo ./scripts/stop.sh
+npm run deploy:stop
 
 # Restart services
-sudo ./scripts/restart.sh
+npm run deploy:restart
 
 # Update to latest
-sudo ./scripts/update.sh
+npm run deploy:update
 
 # Check status
-sudo ./scripts/status.sh
+npm run deploy:status
 
 # Create backup
-sudo ./scripts/backup.sh
+npm run deploy:backup
 ```
+
+## Troubleshooting
+
+If you encounter issues:
+
+```bash
+npm run troubleshoot
+```
+
+This will check your setup and identify common problems.
 
 ## Environment Variables
 
-Required environment files will be created during setup.
-
-## Mac Development Setup
-
-1. **Initial Setup**:
-   ```bash
-   npm run setup:mac
-   ```
-
-2. **Add OpenAI API Key** to `server/.env`
-
-3. **Start Development**:
-   ```bash
-   npm run dev:mac
-   ```
-
-4. **Troubleshooting**:
-   ```bash
-   npm run troubleshoot
-   ```
-
-## Port Configuration
-
-- Server: http://localhost:3000
-- Admin: http://localhost:3001
-- User: http://localhost:3002
-
-The Mac scripts automatically handle port conflicts.
+The setup script creates necessary environment files automatically. You only need to add your OpenAI API key to `server/.env`.
