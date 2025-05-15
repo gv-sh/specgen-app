@@ -1,6 +1,6 @@
 {
   "name": "@gv-sh/specgen-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Complete SpecGen application with server, admin, and user interfaces",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "start": "cd server && npm start",
     "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
     "deploy:stop": "chmod +x scripts/stop.sh && ./scripts/stop.sh",
-    "deploy:restart": "chmod +x scripts/restart.sh && ./scripts/restart.sh", 
+    "deploy:restart": "chmod +x scripts/restart.sh && ./scripts/restart.sh",
     "deploy:update": "chmod +x scripts/update.sh && ./scripts/update.sh",
     "deploy:status": "chmod +x scripts/status.sh && ./scripts/status.sh",
     "deploy:backup": "chmod +x scripts/backup.sh && ./scripts/backup.sh",
