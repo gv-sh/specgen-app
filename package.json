@@ -24,5 +24,8 @@
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
-  "author": "gv-sh"
+  "author": "gv-sh",
+  "publishConfig": {
+    "access": "public"
+  }
 }
