@@ -1,0 +1,41 @@
+{
+  "name": "@gv-sh/specgen-app",
+  "version": "1.0.0",
+  "description": "Complete SpecGen application with server, admin, and user interfaces",
+  "main": "index.js",
+  "scripts": {
+    "setup": "chmod +x scripts/setup.sh && ./scripts/setup.sh",
+    "setup:mac": "chmod +x scripts/setup-mac.sh && ./scripts/setup-mac.sh",
+    "fresh-setup": "chmod +x scripts/fresh-setup.sh && ./scripts/fresh-setup.sh",
+    "download-packages": "npm pack @gv-sh/specgen-server && npm pack @gv-sh/specgen-admin && npm pack @gv-sh/specgen-user",
+    "extract-packages": "tar -xzf gv-sh-specgen-server-*.tgz && mv package server && tar -xzf gv-sh-specgen-admin-*.tgz && mv package admin && tar -xzf gv-sh-specgen-user-*.tgz && mv package user && rm -f *.tgz",
+    "install-all": "cd server && npm install && cd ../admin && npm install && cd ../user && npm install",
+    "build": "cd admin && npm run build && cd ../user && npm run build",
+    "start": "cd server && npm start",
+    "dev": "concurrently \"cd server && npm run dev\" \"cd admin && npm start\" \"cd user && npm start\"",
+    "dev:mac": "chmod +x scripts/dev-mac.sh && ./scripts/dev-mac.sh",
+    "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
+    "deploy:stop": "chmod +x scripts/stop.sh && ./scripts/stop.sh",
+    "deploy:restart": "chmod +x scripts/restart.sh && ./scripts/restart.sh", 
+    "deploy:update": "chmod +x scripts/update.sh && ./scripts/update.sh",
+    "deploy:status": "chmod +x scripts/status.sh && ./scripts/status.sh",
+    "deploy:backup": "chmod +x scripts/backup.sh && ./scripts/backup.sh",
+    "troubleshoot": "chmod +x scripts/troubleshoot-mac.sh && ./scripts/troubleshoot-mac.sh",
+    "fix-css": "chmod +x scripts/fix-css.sh && ./scripts/fix-css.sh",
+    "fix-permissions": "chmod +x scripts/fix-permissions.sh && ./scripts/fix-permissions.sh",
+    "fix-css-comprehensive": "chmod +x scripts/fix-css-comprehensive.sh && ./scripts/fix-css-comprehensive.sh",
+    "diagnose-css": "chmod +x scripts/diagnose-css.sh && ./scripts/diagnose-css.sh",
+    "setup:source": "chmod +x scripts/setup-source.sh && ./scripts/setup-source.sh",
+    "dev:source": "chmod +x scripts/dev-source.sh && ./scripts/dev-source.sh",
+    "copy-configs": "chmod +x scripts/copy-configs.sh && ./scripts/copy-configs.sh"
+  },
+  "dependencies": {
+    "@gv-sh/specgen-server": "^0.5.2",
+    "@gv-sh/specgen-admin": "^0.5.5",
+    "@gv-sh/specgen-user": "^0.6.3"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "author": "gv-sh"
+}

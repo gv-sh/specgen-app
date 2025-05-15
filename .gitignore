@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+*.tgz
+
+# Admin, User, and Server directories
+admin/
+user/
+server/
+
+# Build outputs
+server/build/
+admin/build/
+user/build/
+
+# Environment files
+server/.env
+admin/.env*
+user/.env*
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+.vscode/
+.idea/
+
+# Backup files
+*-backup*
