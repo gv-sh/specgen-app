@@ -29,6 +29,23 @@ npx @gv-sh/specgen-app dev
 npx @gv-sh/specgen-app production
 ```
 
+### Low Memory Mode for Small Servers
+
+If you're deploying on a small EC2 instance or any server with limited RAM:
+
+```bash
+# First, add swap space to prevent out-of-memory errors
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Then use the low-memory versions of the commands
+npx @gv-sh/specgen-app setup-low-memory
+npx @gv-sh/specgen-app production-low-memory
+```
+
 ### Using NPM Scripts
 
 1. **Setup**:
@@ -79,21 +96,29 @@ If you have SSH access to a server (like an EC2 instance), this is the fastest w
 
 4. **Install and run SpecGen**:
    ```bash
+   # Add swap space to prevent out-of-memory errors
+   sudo fallocate -l 2G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   
    # Create and enter project directory
    mkdir specgen
    cd specgen
    
-   # Run the setup
-   npx @gv-sh/specgen-app setup
+   # Run the setup with low memory optimization
+   npx @gv-sh/specgen-app setup-low-memory
    
-   # Start in production mode
-   npx @gv-sh/specgen-app production
+   # Start in production mode with low memory optimization
+   npx @gv-sh/specgen-app production-low-memory
    ```
 
 5. **Keep the service running with PM2** (recommended):
    ```bash
    sudo npm install -g pm2
-   pm2 start "npx @gv-sh/specgen-app production" --name "specgen"
+   # Use the low-memory production mode with PM2
+   pm2 start "npx @gv-sh/specgen-app production-low-memory" --name "specgen"
    pm2 startup
    pm2 save
    ```
@@ -233,7 +258,9 @@ npm run deploy:backup
 The following commands are available when using `npx @gv-sh/specgen-app` or `specgen-app` (if installed globally):
 
 - `setup` - Set up the SpecGen application
+- `setup-low-memory` - Set up the SpecGen application with memory optimizations
 - `production` - Run the application in production mode
+- `production-low-memory` - Run the application in production mode with memory optimizations
 - `dev` - Run the application in development mode
 - `deploy` - Deploy the application
 - `deploy:stop` - Stop the deployed application

@@ -38,8 +38,14 @@ switch (command) {
   case 'setup':
     runScript('setup');
     break;
+  case 'setup-low-memory':
+    runScript('setup-low-memory');
+    break;
   case 'production':
     runScript('production');
+    break;
+  case 'production-low-memory':
+    runScript('production-low-memory');
     break;
   case 'dev':
     runScript('dev');
@@ -69,7 +75,9 @@ switch (command) {
     console.log('Usage: specgen-app <command>');
     console.log('\nAvailable commands:');
     console.log('  setup           - Set up the SpecGen application');
+  console.log('  setup-low-memory - Set up the SpecGen application with memory optimizations');
     console.log('  production      - Run the application in production mode');
+  console.log('  production-low-memory - Run the application in production mode with memory optimizations');
     console.log('  dev             - Run the application in development mode');
     console.log('  deploy          - Deploy the application');
     console.log('  deploy:stop     - Stop the deployed application');

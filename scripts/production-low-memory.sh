@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# SpecGen Production Script - Low Memory Version
+set -e
+
+echo "🚀 Starting SpecGen in production mode (Low Memory)..."
+
+# Function to check if port is available
+check_port() {
+    local port=$1
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+        return 1  # Port in use
+    else
+        return 0  # Port available
+    fi
+}
+
+# Verify OpenAI API key
+if [ -f "server/.env" ]; then
+    # In CI mode, skip API key validation
+    if [ "$CI" = "true" ]; then
+        echo "CI mode detected - skipping API key validation"
+    elif grep -q "OPENAI_API_KEY=your_openai_api_key_here" server/.env; then
+        echo "⚠️ No OpenAI API key detected!"
+        echo "Enter your OpenAI API key: "
+        read -r OPENAI_KEY
+        
+        if [ -z "$OPENAI_KEY" ]; then
+            echo "❌ No API key provided. Cannot start in production mode."
+            exit 1
+        else
+            # Update the API key in the .env file
+            sed -i.bak "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=$OPENAI_KEY/" server/.env
+            rm -f server/.env.bak
+            echo "✅ API key updated in server/.env"
+        fi
+    fi
+else
+    echo "❌ server/.env file not found. Run 'npm run setup' first."
+    exit 1
+fi
+
+# Verify directories exist
+for dir in server admin user; do
+    if [ ! -d "$dir" ]; then
+        echo "❌ $dir directory not found. Run 'npm run setup' first."
+        exit 1
+    fi
+done
+
+# Make sure node_modules exist in the server directory
+if [ ! -d "server/node_modules" ]; then
+    echo "Installing server dependencies..."
+    cd server
+    # Create a .npmrc file that ignores engine requirements
+    echo "engine-strict=false" > .npmrc
+    npm install --no-fund --no-audit --production --maxsockets=2 --loglevel=warn
+    cd ..
+fi
+
+# Set production environment
+export NODE_ENV=production
+
+# Check if we need to build
+if [ ! -d "admin/build" ] || [ ! -d "user/build" ]; then
+    echo "Building web interfaces (optimized mode)..."
+    
+    # Admin build
+    if [ ! -d "admin/build" ]; then
+        echo "Building admin..."
+        cd admin
+        echo "engine-strict=false" > .npmrc
+        # Install only production dependencies
+        npm install --no-fund --no-audit --production --maxsockets=2 --loglevel=warn
+        # Set environment for smaller build
+        export GENERATE_SOURCEMAP=false
+        export SKIP_PREFLIGHT_CHECK=true
+        npm run build
+        cd ..
+    fi
+    
+    # User build
+    if [ ! -d "user/build" ]; then
+        echo "Building user..."
+        cd user
+        echo "engine-strict=false" > .npmrc
+        # Install only production dependencies
+        npm install --no-fund --no-audit --production --maxsockets=2 --loglevel=warn
+        # Set environment for smaller build
+        export GENERATE_SOURCEMAP=false
+        export SKIP_PREFLIGHT_CHECK=true
+        npm run build
+        cd ..
+    fi
+fi
+
+# Create production-ready .env for server
+cat > server/.env.production << EOF
+$(cat server/.env)
+NODE_ENV=production
+EOF
+
+# Kill existing processes on required ports if needed
+echo "Checking ports..."
+for port in 3000 3001 3002; do
+    if ! check_port $port; then
+        echo "Port $port is in use. Attempting to free it..."
+        lsof -ti:$port | xargs kill -9 2>/dev/null || true
+        sleep 1
+    fi
+done
+
+# Start production server
+echo "Starting production server..."
+if [ "$CI" = "true" ]; then
+    echo "CI mode detected - skipping server start"
+else
+    cd server && NODE_ENV=production npm start
+fi
