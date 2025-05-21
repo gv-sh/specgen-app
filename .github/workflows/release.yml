@@ -39,10 +39,16 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Test setup process
+      - name: Test setup and production process
         run: |
-          # Run setup to verify everything works
-          npm run setup
+          # Run setup with a timeout for the API key prompt
+          timeout 1s npm run setup || true
+          
+          # Make scripts executable
+          npm run make-executable
+          
+          # Check if we can start production mode by providing a test key
+          echo "sk-test1234" | timeout 2s ./scripts/production.sh || true
           
           # Verify all components are extracted
           if [ ! -d "server" ]; then

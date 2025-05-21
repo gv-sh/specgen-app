@@ -108,13 +108,31 @@ echo "🔧 Setting up environment files..."
 
 # Server .env
 if [ ! -f server/.env ]; then
-    cat > server/.env << 'EOF'
-# Add your OpenAI API key here
-OPENAI_API_KEY=your_openai_api_key_here
+    # Prompt for OpenAI API key
+    echo "To use SpecGen, you need an OpenAI API key."
+    echo "Enter your OpenAI API key (or press enter to set it later): "
+    read -r OPENAI_KEY
+    
+    # If key is provided, use it, otherwise use placeholder
+    if [ -z "$OPENAI_KEY" ]; then
+        OPENAI_KEY="your_openai_api_key_here"
+        KEY_PROVIDED=false
+    else
+        KEY_PROVIDED=true
+    fi
+    
+    cat > server/.env << EOF
+# OpenAI API key
+OPENAI_API_KEY=$OPENAI_KEY
 NODE_ENV=development
 PORT=3000
 EOF
-    echo "Created server/.env - Please add your OpenAI API key"
+    
+    if [ "$KEY_PROVIDED" = true ]; then
+        echo "✅ OpenAI API key saved to server/.env"
+    else
+        echo "⚠️ No OpenAI API key provided. You'll need to add it later to server/.env"
+    fi
 fi
 
 # Admin .env.development  
@@ -140,8 +158,12 @@ fi
 echo "✅ Setup complete!"
 echo ""
 echo "Next steps:"
-echo "1. Add your OpenAI API key to server/.env"
-echo "2. Run 'npm run dev' to start all services"
+if [ "$KEY_PROVIDED" = false ]; then
+    echo "1. Add your OpenAI API key to server/.env"
+    echo "2. Run 'npm run dev' to start all services"
+else
+    echo "1. Run 'npm run dev' to start all services"
+fi
 echo ""
 echo "Access URLs:"
 echo "  🌐 User Interface: http://localhost:3002"

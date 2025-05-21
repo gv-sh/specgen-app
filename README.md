@@ -16,12 +16,18 @@ A unified deployment package for the SpecGen speculative fiction generator platf
    ```bash
    npm run setup
    ```
+   During setup, you'll be prompted to enter your OpenAI API key.
 
-2. **Add OpenAI API Key** to `server/.env`
+2. **Add OpenAI API Key** to `server/.env` if you skipped during setup
 
 3. **Start Development**:
    ```bash
    npm run dev
+   ```
+
+4. **Start Production** (optimized build with API key validation):
+   ```bash
+   npm run production
    ```
 
 ## Access URLs
