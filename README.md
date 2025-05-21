@@ -1,6 +1,6 @@
 # SpecGen App - Complete Platform
 
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/gv-sh/specgen-app)
+[![Version](https://img.shields.io/badge/version-0.3.1-blue.svg)](https://github.com/gv-sh/specgen-app)
 
 A unified deployment package for the SpecGen speculative fiction generator platform.
 
@@ -11,6 +11,25 @@ A unified deployment package for the SpecGen speculative fiction generator platf
 - **User**: React user interface for story generation
 
 ## Quick Start
+
+### Using NPX (Recommended)
+
+```bash
+# Create and enter your project directory
+mkdir specgen-project
+cd specgen-project
+
+# Run setup directly with npx
+npx @gv-sh/specgen-app setup
+
+# Start in development mode
+npx @gv-sh/specgen-app dev
+
+# Or start in production mode
+npx @gv-sh/specgen-app production
+```
+
+### Using NPM Scripts
 
 1. **Setup**:
    ```bash
@@ -38,7 +57,7 @@ A unified deployment package for the SpecGen speculative fiction generator platf
 
 ## Deployment Options
 
-### Option 1: Quick NPM Deployment to Remote Server
+### Option 1: Quick NPX Deployment to Remote Server
 
 If you have SSH access to a server (like an EC2 instance), this is the fastest way to deploy:
 
@@ -60,9 +79,6 @@ If you have SSH access to a server (like an EC2 instance), this is the fastest w
 
 4. **Install and run SpecGen**:
    ```bash
-   # Install globally
-   sudo npm install -g @gv-sh/specgen-app
-   
    # Create and enter project directory
    mkdir specgen
    cd specgen
@@ -83,10 +99,11 @@ If you have SSH access to a server (like an EC2 instance), this is the fastest w
    ```
 
 6. **Access your application**:
-   - User Interface: http://your-server-ip:3000
-   - Admin Interface: http://your-server-ip:3000/admin
+   - User Interface: http://your-server-ip:3002
+   - Admin Interface: http://your-server-ip:3001
+   - API: http://your-server-ip:3000
 
-### Option 2: NPM Package Deployment (Detailed)
+### Option 2: Global NPM Package Deployment
 
 #### Local Machine Deployment
 
@@ -103,13 +120,13 @@ If you have SSH access to a server (like an EC2 instance), this is the fastest w
 
 3. **Initialize and setup**:
    ```bash
-   npx @gv-sh/specgen-app setup
+   specgen-app setup
    ```
    During setup, you'll be prompted to enter your OpenAI API key.
 
 4. **Start the application**:
-   - Development mode: `npx @gv-sh/specgen-app dev`
-   - Production mode: `npx @gv-sh/specgen-app production`
+   - Development mode: `specgen-app dev`
+   - Production mode: `specgen-app production`
 
 #### Remote Server Deployment
 
@@ -130,19 +147,19 @@ If you have SSH access to a server (like an EC2 instance), this is the fastest w
    cd specgen
    ```
 
-4. **Install SpecGen**:
+4. **Install SpecGen globally**:
    ```bash
-   npm install @gv-sh/specgen-app
+   npm install -g @gv-sh/specgen-app
    ```
 
 5. **Setup the application**:
    ```bash
-   npx @gv-sh/specgen-app setup
+   specgen-app setup
    ```
 
 6. **Start in production mode**:
    ```bash
-   npx @gv-sh/specgen-app production
+   specgen-app production
    ```
 
 ### Option 3: Manual Deployment
@@ -172,13 +189,22 @@ sudo ./deploy.sh
 
 ## Management Commands
 
-When using NPM global installation:
+When using NPX or global installation:
 ```bash
 # Check status
-npx @gv-sh/specgen-app status
+npx @gv-sh/specgen-app deploy:status
+# or when installed globally
+specgen-app deploy:status
 
 # Stop services
-npx @gv-sh/specgen-app stop
+npx @gv-sh/specgen-app deploy:stop
+# or
+specgen-app deploy:stop
+
+# Restart services
+npx @gv-sh/specgen-app deploy:restart
+# or
+specgen-app deploy:restart
 
 # Update to latest version
 npm update -g @gv-sh/specgen-app
@@ -202,13 +228,31 @@ npm run deploy:status
 npm run deploy:backup
 ```
 
+## Available Commands
+
+The following commands are available when using `npx @gv-sh/specgen-app` or `specgen-app` (if installed globally):
+
+- `setup` - Set up the SpecGen application
+- `production` - Run the application in production mode
+- `dev` - Run the application in development mode
+- `deploy` - Deploy the application
+- `deploy:stop` - Stop the deployed application
+- `deploy:restart` - Restart the deployed application
+- `deploy:update` - Update the deployed application
+- `deploy:status` - Check the status of the deployed application
+- `deploy:backup` - Create a backup of the deployed application
+- `troubleshoot` - Run troubleshooting checks
+
 ## Troubleshooting
 
 If you encounter issues:
 
 ```bash
-# For global NPM installation
+# Using npx
 npx @gv-sh/specgen-app troubleshoot
+
+# Using global installation
+specgen-app troubleshoot
 
 # For repository installation
 npm run troubleshoot

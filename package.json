@@ -3,6 +3,9 @@
   "version": "0.3.1",
   "description": "Complete SpecGen application with server, admin, and user interfaces",
   "main": "index.js",
+  "bin": {
+    "specgen-app": "./bin/cli.js"
+  },
   "scripts": {
     "setup": "chmod +x scripts/setup.sh && ./scripts/setup.sh",
     "dev": "chmod +x scripts/dev.sh && ./scripts/dev.sh",
@@ -16,7 +19,8 @@
     "deploy:update": "chmod +x scripts/update.sh && ./scripts/update.sh",
     "deploy:status": "chmod +x scripts/status.sh && ./scripts/status.sh",
     "deploy:backup": "chmod +x scripts/backup.sh && ./scripts/backup.sh",
-    "troubleshoot": "chmod +x scripts/troubleshoot.sh && ./scripts/troubleshoot.sh"
+    "troubleshoot": "chmod +x scripts/troubleshoot.sh && ./scripts/troubleshoot.sh",
+    "postinstall": "chmod +x bin/cli.js"
   },
   "dependencies": {
     "@gv-sh/specgen-server": "0.9.0",
