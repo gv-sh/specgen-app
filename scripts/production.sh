@@ -17,7 +17,10 @@ check_port() {
 
 # Verify OpenAI API key
 if [ -f "server/.env" ]; then
-    if grep -q "OPENAI_API_KEY=your_openai_api_key_here" server/.env; then
+    # In CI mode, skip API key validation
+    if [ "$CI" = "true" ]; then
+        echo "CI mode detected - skipping API key validation"
+    elif grep -q "OPENAI_API_KEY=your_openai_api_key_here" server/.env; then
         echo "⚠️ No OpenAI API key detected!"
         echo "Enter your OpenAI API key: "
         read -r OPENAI_KEY
@@ -80,4 +83,8 @@ done
 
 # Start production server
 echo "Starting production server..."
-cd server && NODE_ENV=production npm start
+if [ "$CI" = "true" ]; then
+    echo "CI mode detected - skipping server start"
+else
+    cd server && NODE_ENV=production npm start
+fi

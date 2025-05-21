@@ -41,14 +41,20 @@ jobs:
       
       - name: Test setup and production process
         run: |
-          # Run setup with a timeout for the API key prompt
-          timeout 1s npm run setup || true
+          # Create an automated setup process for CI environment
+          mkdir -p server
+          
+          # Create a CI-specific .env file with a dummy API key
+          echo "OPENAI_API_KEY=sk-test1234\nNODE_ENV=test\nPORT=3000" > server/.env
+          
+          # Run normal setup with the environment variable to indicate CI mode
+          CI=true npm run setup
           
           # Make scripts executable
           npm run make-executable
           
-          # Check if we can start production mode by providing a test key
-          echo "sk-test1234" | timeout 2s ./scripts/production.sh || true
+          # Test production script in CI mode
+          CI=true timeout 10s ./scripts/production.sh || true
           
           # Verify all components are extracted
           if [ ! -d "server" ]; then

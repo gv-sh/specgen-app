@@ -107,31 +107,49 @@ done
 echo "🔧 Setting up environment files..."
 
 # Server .env
-if [ ! -f server/.env ]; then
-    # Prompt for OpenAI API key
-    echo "To use SpecGen, you need an OpenAI API key."
-    echo "Enter your OpenAI API key (or press enter to set it later): "
-    read -r OPENAI_KEY
-    
-    # If key is provided, use it, otherwise use placeholder
-    if [ -z "$OPENAI_KEY" ]; then
-        OPENAI_KEY="your_openai_api_key_here"
-        KEY_PROVIDED=false
-    else
+if [ ! -f server/.env ] || [ "$CI" = "true" ]; then
+    # If in CI mode, use a dummy key
+    if [ "$CI" = "true" ]; then
+        # If in CI environment and .env already exists, just use it
+        if [ -f server/.env ]; then
+            echo "Using existing .env file for CI environment"
+        else
+            # Create a CI .env file
+            cat > server/.env << EOF
+OPENAI_API_KEY=sk-test1234
+NODE_ENV=test
+PORT=3000
+EOF
+            echo "Created test .env file for CI environment"
+        fi
         KEY_PROVIDED=true
-    fi
-    
-    cat > server/.env << EOF
+    else
+        # Normal interactive mode
+        # Prompt for OpenAI API key
+        echo "To use SpecGen, you need an OpenAI API key."
+        echo "Enter your OpenAI API key (or press enter to set it later): "
+        read -r OPENAI_KEY
+        
+        # If key is provided, use it, otherwise use placeholder
+        if [ -z "$OPENAI_KEY" ]; then
+            OPENAI_KEY="your_openai_api_key_here"
+            KEY_PROVIDED=false
+        else
+            KEY_PROVIDED=true
+        fi
+        
+        cat > server/.env << EOF
 # OpenAI API key
 OPENAI_API_KEY=$OPENAI_KEY
 NODE_ENV=development
 PORT=3000
 EOF
-    
-    if [ "$KEY_PROVIDED" = true ]; then
-        echo "✅ OpenAI API key saved to server/.env"
-    else
-        echo "⚠️ No OpenAI API key provided. You'll need to add it later to server/.env"
+        
+        if [ "$KEY_PROVIDED" = true ]; then
+            echo "✅ OpenAI API key saved to server/.env"
+        else
+            echo "⚠️ No OpenAI API key provided. You'll need to add it later to server/.env"
+        fi
     fi
 fi
 
