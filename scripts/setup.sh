@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# SpecGen App Setup Script
+# SpecGen App Setup Script - Low Memory Default with Full Cleanup
 set -e
 
-echo "🚀 Setting up SpecGen App..."
+echo "🚀 Setting up SpecGen App (Low Memory Mode)..."
+echo "🧹 This will clean up any existing installations..."
 
 # Check Node.js
 if ! command -v npm &> /dev/null; then
@@ -25,16 +26,88 @@ safe_remove() {
     fi
 }
 
-# Clean existing directories with proper permission handling
-echo "Cleaning existing directories..."
+# ========================================
+# CLEANUP EXISTING INSTALLATIONS
+# ========================================
+
+echo "🧹 Cleaning up existing installations..."
+
+# 1. Stop and remove all PM2 processes
+echo "Stopping PM2 processes..."
+npx pm2 stop all 2>/dev/null || true
+npx pm2 delete all 2>/dev/null || true
+npx pm2 kill 2>/dev/null || true
+
+# Remove PM2 configuration files
+rm -f ecosystem.config.js 2>/dev/null || true
+rm -f pm2.config.js 2>/dev/null || true
+rm -rf ~/.pm2/logs/* 2>/dev/null || true
+
+# 2. Kill processes on ports we'll use
+echo "Freeing up ports..."
+for port in 8080 3000 3001 3002; do
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo "Killing processes on port $port..."
+        lsof -ti:$port | xargs kill -9 2>/dev/null || true
+        sleep 1
+    fi
+done
+
+# 3. Stop nginx if running and remove specgen configs
+echo "Cleaning up nginx..."
+if command -v nginx &> /dev/null; then
+    sudo systemctl stop nginx 2>/dev/null || true
+    
+    # Remove any specgen-related nginx configs
+    sudo rm -f /etc/nginx/sites-available/specgen* 2>/dev/null || true
+    sudo rm -f /etc/nginx/sites-enabled/specgen* 2>/dev/null || true
+    sudo rm -f /etc/nginx/conf.d/specgen* 2>/dev/null || true
+    
+    # Test nginx config and restart if valid
+    if sudo nginx -t 2>/dev/null; then
+        sudo systemctl start nginx 2>/dev/null || true
+    else
+        echo "⚠️ Nginx config has issues, leaving it stopped"
+    fi
+fi
+
+# 4. Clean up any systemd services
+echo "Cleaning up systemd services..."
+if systemctl list-units --type=service | grep -q specgen; then
+    sudo systemctl stop specgen* 2>/dev/null || true
+    sudo systemctl disable specgen* 2>/dev/null || true
+    sudo rm -f /etc/systemd/system/specgen* 2>/dev/null || true
+    sudo systemctl daemon-reload 2>/dev/null || true
+fi
+
+# 5. Clean up Docker containers if any
+if command -v docker &> /dev/null; then
+    echo "Cleaning up Docker containers..."
+    docker stop $(docker ps -q --filter "name=specgen") 2>/dev/null || true
+    docker rm $(docker ps -aq --filter "name=specgen") 2>/dev/null || true
+fi
+
+# ========================================
+# CLEAN PROJECT DIRECTORIES
+# ========================================
+
+echo "Cleaning existing project directories..."
 safe_remove "server"
 safe_remove "admin" 
 safe_remove "user"
+safe_remove "logs"
+safe_remove "node_modules"
 rm -f *.tgz package 2>/dev/null || true
+rm -f *.log 2>/dev/null || true
+rm -f ecosystem.config.js 2>/dev/null || true
+
+# ========================================
+# FRESH INSTALLATION
+# ========================================
 
 # Install dependencies to get latest versions
-echo "📦 Installing dependencies..."
-npm install
+echo "📦 Installing dependencies (low memory mode)..."
+npm install --no-fund --no-audit --maxsockets=2 --loglevel=warn
 
 # Download npm packages
 echo "📦 Downloading packages..."
@@ -69,63 +142,44 @@ if [ -f "gv-sh-specgen-user-"*.tgz ]; then
     rm gv-sh-specgen-user-*.tgz
 fi
 
-# Patch package.json files to fix React scripts
-echo "🔧 Patching package scripts..."
-
-# Fix user package start script
-if [ -f "user/package.json" ]; then
-    echo "Fixing user package start script..."
-    # Replace the start script to use react-scripts instead of missing scripts/start.js
-    sed -i.bak 's|"start": "cross-env PORT=3002 REACT_APP_API_URL=http://localhost:3000 node scripts/start.js"|"start": "cross-env PORT=3002 REACT_APP_API_URL=http://localhost:3000 react-scripts start"|g' user/package.json
-    rm -f user/package.json.bak
-fi
-
-# Fix admin package start script if needed
-if [ -f "admin/package.json" ]; then
-    echo "Checking admin package start script..."
-    # Check if admin has similar issue
-    if grep -q "node scripts/start.js" admin/package.json; then
-        echo "Fixing admin package start script..."
-        sed -i.bak 's|node scripts/start.js|react-scripts start|g' admin/package.json
-        rm -f admin/package.json.bak
-    fi
-fi
-
-# Install dependencies for each component
-echo "📚 Installing dependencies..."
+# Install dependencies for each component (low memory)
+echo "📚 Installing dependencies (low memory mode)..."
 for dir in server admin user; do
     if [ -d "$dir" ]; then
         echo "Installing $dir dependencies..."
-        cd "$dir" && npm install
+        cd "$dir"
+        # Create .npmrc for low memory mode
+        echo "engine-strict=false" > .npmrc
+        npm install --no-fund --no-audit --production --maxsockets=2 --loglevel=warn
         cd ..
     else
         echo "⚠️  Warning: $dir directory not found"
     fi
 done
 
-# Setup environment files
+# ========================================
+# SETUP ENVIRONMENT FILES
+# ========================================
+
 echo "🔧 Setting up environment files..."
 
-# Server .env
+# Server .env (default to port 8080)
 if [ ! -f server/.env ] || [ "$CI" = "true" ]; then
     # If in CI mode, use a dummy key
     if [ "$CI" = "true" ]; then
-        # If in CI environment and .env already exists, just use it
         if [ -f server/.env ]; then
             echo "Using existing .env file for CI environment"
         else
-            # Create a CI .env file
             cat > server/.env << EOF
 OPENAI_API_KEY=sk-test1234
 NODE_ENV=test
-PORT=3000
+PORT=8080
 EOF
             echo "Created test .env file for CI environment"
         fi
         KEY_PROVIDED=true
     else
         # Normal interactive mode
-        # Prompt for OpenAI API key
         echo "To use SpecGen, you need an OpenAI API key."
         echo "Enter your OpenAI API key (or press enter to set it later): "
         read -r OPENAI_KEY
@@ -142,7 +196,7 @@ EOF
 # OpenAI API key
 OPENAI_API_KEY=$OPENAI_KEY
 NODE_ENV=development
-PORT=3000
+PORT=8080
 EOF
         
         if [ "$KEY_PROVIDED" = true ]; then
@@ -156,34 +210,54 @@ fi
 # Admin .env.development  
 if [ -d admin ]; then
     cat > admin/.env.development << 'EOF'
-REACT_APP_API_URL=http://localhost:3000
+REACT_APP_API_URL=http://localhost:8080
 PORT=3001
 SKIP_PREFLIGHT_CHECK=true
-GENERATE_SOURCEMAP=true
+GENERATE_SOURCEMAP=false
 EOF
 fi
 
 # User .env.development
 if [ -d user ]; then
     cat > user/.env.development << 'EOF'
-REACT_APP_API_URL=http://localhost:3000  
+REACT_APP_API_URL=http://localhost:8080
 PORT=3002
 SKIP_PREFLIGHT_CHECK=true
-GENERATE_SOURCEMAP=true
+GENERATE_SOURCEMAP=false
 EOF
 fi
 
-echo "✅ Setup complete!"
+# Create logs directory
+mkdir -p logs
+
+echo ""
+echo "✅ Setup complete! All previous installations cleaned up."
+echo ""
+echo "🧹 Cleaned up:"
+echo "  - PM2 processes and configurations"
+echo "  - Nginx specgen configurations"
+echo "  - Systemd services"
+echo "  - Docker containers"
+echo "  - Old project files"
+echo "  - Freed ports: 8080, 3000, 3001, 3002"
 echo ""
 echo "Next steps:"
 if [ "$KEY_PROVIDED" = false ]; then
     echo "1. Add your OpenAI API key to server/.env"
     echo "2. Run 'npm run dev' to start all services"
+    echo "3. Or run 'npm run production' for production mode on port 8080"
 else
     echo "1. Run 'npm run dev' to start all services"
+    echo "2. Or run 'npm run production' for production mode on port 8080"
 fi
 echo ""
 echo "Access URLs:"
+echo "  🌐 Production: http://localhost:8080 (main app)"
+echo "  📱 Production User: http://localhost:8080/app"
+echo "  ⚙️ Production Admin: http://localhost:8080/admin"
+echo "  📚 API Docs: http://localhost:8080/api-docs"
+echo ""
+echo "Development URLs:"
 echo "  🌐 User Interface: http://localhost:3002"
-echo "  ⚙️  Admin Interface: http://localhost:3001"  
-echo "  🔧 API: http://localhost:3000"
+echo "  ⚙️ Admin Interface: http://localhost:3001"  
+echo "  🔧 API: http://localhost:8080"

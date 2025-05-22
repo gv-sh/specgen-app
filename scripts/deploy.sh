@@ -1,189 +1,180 @@
 #!/bin/bash
 
-# AWS Ubuntu Deployment Script for SpecGen
+# SpecGen Deploy Script - Simple PM2 Deployment on Port 8080 with Full Cleanup
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+echo "🚀 Deploying SpecGen to production on port 8080..."
+echo "🧹 Performing full cleanup before deployment..."
 
-echo -e "${GREEN}Starting SpecGen deployment...${NC}"
+# Function to check if port is available
+check_port() {
+    local port=$1
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+        return 1  # Port in use
+    else
+        return 0  # Port available
+    fi
+}
 
-# Update system
-echo -e "${YELLOW}Updating system packages...${NC}"
-sudo apt update && sudo apt upgrade -y
+# ========================================
+# FULL CLEANUP
+# ========================================
 
-# Install Node.js 18
-echo -e "${YELLOW}Installing Node.js 18...${NC}"
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
+# Stop and remove all PM2 processes
+echo "Stopping all PM2 processes..."
+npx pm2 stop all 2>/dev/null || true
+npx pm2 delete all 2>/dev/null || true
+npx pm2 kill 2>/dev/null || true
 
-# Install PM2
-echo -e "${YELLOW}Installing PM2...${NC}"
-sudo npm install -g pm2
+# Remove old PM2 config files
+rm -f ecosystem.config.js 2>/dev/null || true
+rm -f pm2.config.js 2>/dev/null || true
 
-# Install Nginx
-echo -e "${YELLOW}Installing Nginx...${NC}"
-sudo apt install -y nginx
+# Kill processes on all relevant ports
+echo "Freeing all ports..."
+for port in 8080 3000 3001 3002; do
+    if ! check_port $port; then
+        echo "Killing processes on port $port..."
+        lsof -ti:$port | xargs kill -9 2>/dev/null || true
+        sleep 1
+    fi
+done
 
-# Create application directory
-sudo mkdir -p /opt/specgen-app
-cd /opt/specgen-app
+# Clean up logs
+rm -rf logs/* 2>/dev/null || true
 
-# Download and extract packages
-echo -e "${YELLOW}Downloading SpecGen packages...${NC}"
-npm pack @gv-sh/specgen-server
-npm pack @gv-sh/specgen-admin  
-npm pack @gv-sh/specgen-user
+# Check for nginx conflicts
+if command -v nginx &> /dev/null && systemctl is-active --quiet nginx 2>/dev/null; then
+    if nginx -T 2>/dev/null | grep -q ":8080"; then
+        echo "⚠️ WARNING: Nginx is configured to use port 8080"
+        echo "   You may need to stop nginx or reconfigure it"
+        echo "   Run: sudo systemctl stop nginx"
+    fi
+fi
 
-# Extract packages
-tar -xzf gv-sh-specgen-server-*.tgz && mv package server
-tar -xzf gv-sh-specgen-admin-*.tgz && mv package admin
-tar -xzf gv-sh-specgen-user-*.tgz && mv package user
+# ========================================
+# RUN PRODUCTION SETUP
+# ========================================
 
-# Install dependencies
-echo -e "${YELLOW}Installing dependencies...${NC}"
-cd server && npm install --production
-cd ../admin && npm install --production
-cd ../user && npm install --production
-cd ..
+echo "Running production setup..."
+npm run production &
+SETUP_PID=$!
 
-# Setup environment
-echo -e "${YELLOW}Setting up environment...${NC}"
-read -p "Enter your OpenAI API key: " OPENAI_KEY
-read -p "Enter your domain (or IP): " DOMAIN
+# Wait for setup to complete or timeout
+TIMEOUT=90
+COUNT=0
+while [ $COUNT -lt $TIMEOUT ]; do
+    if ! kill -0 $SETUP_PID 2>/dev/null; then
+        echo "Production setup completed"
+        break
+    fi
+    sleep 1
+    COUNT=$((COUNT + 1))
+    
+    # Show progress every 15 seconds
+    if [ $((COUNT % 15)) -eq 0 ]; then
+        echo "Setup still running... ($COUNT/$TIMEOUT seconds)"
+    fi
+done
 
-# Server .env
-echo "OPENAI_API_KEY=$OPENAI_KEY" | sudo tee server/.env
-echo "NODE_ENV=production" | sudo tee -a server/.env
-echo "PORT=3000" | sudo tee -a server/.env
+# Kill setup process if it's still running
+if kill -0 $SETUP_PID 2>/dev/null; then
+    echo "Setup taking too long, terminating and continuing with PM2 deployment..."
+    kill $SETUP_PID 2>/dev/null || true
+    # Force kill any remaining processes
+    for port in 8080 3000; do
+        lsof -ti:$port | xargs kill -9 2>/dev/null || true
+    done
+fi
 
-# Admin .env.production
-echo "REACT_APP_API_URL=http://$DOMAIN" | sudo tee admin/.env.production
-echo "GENERATE_SOURCEMAP=false" | sudo tee -a admin/.env.production
+# Wait a moment for cleanup
+sleep 3
 
-# User .env.production  
-echo "REACT_APP_API_URL=http://$DOMAIN" | sudo tee user/.env.production
-echo "GENERATE_SOURCEMAP=false" | sudo tee -a user/.env.production
+# ========================================
+# PM2 DEPLOYMENT
+# ========================================
 
-# Build React apps
-echo -e "${YELLOW}Building React applications...${NC}"
-cd admin && NODE_ENV=production npm run build
-cd ../user && NODE_ENV=production npm run build
-cd ..
-
-# Create PM2 ecosystem
+# Create PM2 ecosystem configuration
+echo "Creating PM2 ecosystem configuration..."
 cat > ecosystem.config.js << 'EOF'
 module.exports = {
   apps: [{
-    name: 'specgen-server',
+    name: 'specgen',
     script: './server/index.js',
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '512M',
+    cwd: process.cwd(),
     env: {
       NODE_ENV: 'production',
-      PORT: 3000
-    }
+      PORT: 8080
+    },
+    instances: 1,
+    exec_mode: 'fork',
+    max_memory_restart: '500M',
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true,
+    watch: false,
+    ignore_watch: ['node_modules', 'logs', '*.log'],
+    restart_delay: 1000,
+    max_restarts: 3,
+    min_uptime: '10s'
   }]
-};
-EOF
-
-# Start server with PM2
-echo -e "${YELLOW}Starting server with PM2...${NC}"
-pm2 start ecosystem.config.js
-pm2 startup
-pm2 save
-
-# Configure Nginx
-echo -e "${YELLOW}Configuring Nginx...${NC}"
-sudo tee /etc/nginx/sites-available/specgen << 'EOF'
-server {
-    listen 80 default_server;
-    server_name _;
-
-    # API
-    location /api/ {
-        proxy_pass http://localhost:3000/api/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # Admin UI
-    location /admin/ {
-        alias /opt/specgen-app/admin/build/;
-        try_files $uri $uri/ /admin/index.html;
-    }
-
-    # User UI (default)
-    location / {
-        root /opt/specgen-app/user/build;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Security headers
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    
-    # Gzip compression
-    gzip on;
-    gzip_comp_level 5;
-    gzip_min_length 256;
-    gzip_proxied any;
-    gzip_vary on;
-    gzip_types
-        application/javascript
-        application/json
-        application/x-javascript
-        application/xml
-        application/xml+rss
-        text/css
-        text/javascript
-        text/plain
-        text/xml;
 }
 EOF
 
-# Enable site
-sudo ln -sf /etc/nginx/sites-available/specgen /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
+# Create logs directory
+mkdir -p logs
 
-# Test and reload Nginx
-sudo nginx -t
-sudo systemctl restart nginx
-
-# Configure firewall
-echo -e "${YELLOW}Configuring firewall...${NC}"
-sudo ufw allow ssh
-sudo ufw allow 'Nginx Full'
-sudo ufw --force enable
-
-# Initialize database
-echo -e "${YELLOW}Initializing database...${NC}"
-cd server && npm run init-db
-
-echo -e "${GREEN}Deployment complete!${NC}"
-echo -e "${GREEN}Access your application at:${NC}"
-echo -e "  User Interface: http://your-server-ip/"
-echo -e "  Admin Interface: http://your-server-ip/admin/"
-echo -e "  API: http://your-server-ip/api/"
-
-# Setup SSL (optional)
-read -p "Would you like to set up SSL with Let's Encrypt? (y/n): " setup_ssl
-if [[ $setup_ssl == "y" ]]; then
-    read -p "Enter your domain name: " domain_name
-    sudo apt install -y certbot python3-certbot-nginx
-    sudo certbot --nginx -d $domain_name
+# Final port check
+echo "Final port check..."
+if ! check_port 8080; then
+    echo "Port 8080 still occupied, force cleaning..."
+    lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+    sleep 2
 fi
 
-echo -e "${GREEN}Setup complete!${NC}"
+# Start with PM2
+echo "Starting SpecGen with PM2 on port 8080..."
+NODE_ENV=production PORT=8080 npx pm2 start ecosystem.config.js
+
+# Wait for startup and verify
+sleep 5
+
+# Check if the process is actually running
+if npx pm2 list | grep -q "online"; then
+    echo ""
+    echo "✅ SpecGen deployment completed successfully!"
+    
+    # Get public IP
+    PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s ipecho.net/plain 2>/dev/null || echo 'your-server')
+    
+    echo ""
+    echo "🌐 Access your application at:"
+    echo "   - Main page: http://$PUBLIC_IP:8080/"
+    echo "   - User app: http://$PUBLIC_IP:8080/app"
+    echo "   - Admin panel: http://$PUBLIC_IP:8080/admin"
+    echo "   - API docs: http://$PUBLIC_IP:8080/api-docs"
+    echo "   - Health check: http://$PUBLIC_IP:8080/api/health"
+    echo ""
+    echo "📊 Management commands:"
+    echo "   - Check status: npx pm2 status"
+    echo "   - View logs: npx pm2 logs specgen"
+    echo "   - Restart: npx pm2 restart specgen"
+    echo "   - Stop: npx pm2 stop specgen"
+    echo ""
+    
+    # Test the health endpoint
+    echo "🔍 Testing health endpoint..."
+    if curl -s http://localhost:8080/api/health >/dev/null 2>&1; then
+        echo "✅ Health check passed!"
+    else
+        echo "⚠️ Health check failed - check logs with: npx pm2 logs specgen"
+    fi
+    
+else
+    echo ""
+    echo "❌ Deployment failed!"
+    echo "📝 Check logs with: npx pm2 logs specgen"
+    echo "📊 Check status with: npx pm2 status"
+    exit 1
+fi

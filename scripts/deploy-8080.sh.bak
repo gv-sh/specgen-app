@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# SpecGen Deploy Script - Port 8080 Production Deployment
+set -e
+
+echo "🚀 Deploying SpecGen to production on port 8080..."
+
+# Function to check if port is available
+check_port() {
+    local port=$1
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+        return 1  # Port in use
+    else
+        return 0  # Port available
+    fi
+}
+
+# Stop existing PM2 processes
+echo "Stopping existing PM2 processes..."
+npx pm2 stop all 2>/dev/null || true
+npx pm2 delete all 2>/dev/null || true
+
+# Kill any processes on port 8080
+echo "Freeing port 8080..."
+if ! check_port 8080; then
+    echo "Port 8080 is in use. Attempting to free it..."
+    lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+    sleep 2
+fi
+
+# Run the production setup
+echo "Running production setup..."
+npm run production-low-memory &
+SETUP_PID=$!
+
+# Wait for setup to complete or timeout
+TIMEOUT=60
+COUNT=0
+while [ $COUNT -lt $TIMEOUT ]; do
+    if ! kill -0 $SETUP_PID 2>/dev/null; then
+        echo "Production setup completed"
+        break
+    fi
+    sleep 1
+    COUNT=$((COUNT + 1))
+done
+
+# Kill setup process if it's still running
+if kill -0 $SETUP_PID 2>/dev/null; then
+    echo "Setup taking too long, continuing with PM2 deployment..."
+    kill $SETUP_PID 2>/dev/null || true
+fi
+
+# Wait a moment for cleanup
+sleep 2
+
+# Create PM2 ecosystem configuration
+echo "Creating PM2 ecosystem configuration..."
+cat > ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [{
+    name: 'specgen',
+    script: './server/index.js',
+    cwd: process.cwd(),
+    env: {
+      NODE_ENV: 'production',
+      PORT: 8080
+    },
+    instances: 1,
+    exec_mode: 'fork',
+    max_memory_restart: '500M',
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true,
+    watch: false,
+    ignore_watch: ['node_modules', 'logs', '*.log']
+  }]
+}
+EOF
+
+# Create logs directory
+mkdir -p logs
+
+# Start with PM2
+echo "Starting SpecGen with PM2 on port 8080..."
+NODE_ENV=production PORT=8080 npx pm2 start ecosystem.config.js
+
+# Wait for startup
+sleep 5
+
+echo ""
+echo "✅ SpecGen deployment completed!"
+echo ""
+echo "🌐 Access your application at:"
+echo "   - Main page: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/"
+echo "   - User app: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/app"
+echo "   - Admin panel: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/admin"
+echo "   - API docs: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/api-docs"
+echo "   - Health check: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/api/health"
+echo ""
+echo "📊 Check status with: npx pm2 status"
+echo "📝 View logs with: npx pm2 logs specgen"
+echo "🔄 Restart with: npx pm2 restart specgen"
