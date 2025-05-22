@@ -2,262 +2,319 @@
 
 [![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/gv-sh/specgen-app)
 
-A unified deployment package for the SpecGen speculative fiction generator platform. **Now optimized for low-memory servers and unified on port 8080!**
+A unified deployment package for the SpecGen speculative fiction generator platform. **Optimized for port 8080 deployment with low memory usage.**
 
-## 🚀 What's New
+## 🚀 Quick Start
 
-- **Single Port Deployment**: Everything runs on port 8080 with clean URL paths
-- **Low Memory Default**: Optimized for small servers and EC2 instances
-- **Automatic Cleanup**: Smart setup that cleans existing installations
-- **Unified Interface**: All services accessible through one port
-
-## Components
-
-- **Server**: Node.js API with OpenAI integration (Port 8080)
-- **Admin**: React admin interface at `/admin`
-- **User**: React user interface at `/app` (also default at `/`)
-
-## Quick Start
-
-### Using NPX (Recommended)
+### One-Command Deployment (Recommended)
 
 ```bash
-# Create and enter your project directory
-mkdir specgen-project
-cd specgen-project
+# Create project directory
+mkdir specgen && cd specgen
 
-# Run setup (automatically includes low-memory optimizations and cleanup)
-npx @gv-sh/specgen-app setup
-
-# Start in development mode (traditional separate ports)
-npx @gv-sh/specgen-app dev
-
-# Or start in production mode (unified port 8080)
-npx @gv-sh/specgen-app production
-
-# Or deploy with PM2 (recommended for servers)
+# Deploy everything in one command
 npx @gv-sh/specgen-app deploy
 ```
 
+**What this does:**
+- Downloads and sets up server, admin, and user components
+- Builds React frontends optimized for production
+- Configures everything for port 8080
+- Starts with PM2 for process management
+- Prompts for OpenAI API key
+
 ## 🌐 Access URLs
 
-### Production Mode (Port 8080 - Unified)
-- **Main Application**: http://localhost:8080/
-- **User Interface**: http://localhost:8080/app
-- **Admin Panel**: http://localhost:8080/admin
-- **API Documentation**: http://localhost:8080/api-docs
-- **Health Check**: http://localhost:8080/api/health
-- **API Endpoints**: http://localhost:8080/api/*
+Once deployed, access your application at:
 
-### Development Mode (Separate Ports)
-- **User Interface**: http://localhost:3002
-- **Admin Interface**: http://localhost:3001
-- **API Server**: http://localhost:8080
+- **Main Application**: http://your-server:8080/
+- **User Interface**: http://your-server:8080/app  
+- **Admin Panel**: http://your-server:8080/admin
+- **API Documentation**: http://your-server:8080/api-docs
+- **Health Check**: http://your-server:8080/api/health
+- **API Endpoints**: http://your-server:8080/api/*
 
-## 🖥️ Server Deployment
+## 🖥️ Server Requirements
 
-### Option 1: Quick AWS/VPS Deployment
+### Minimum Requirements
+- **Node.js**: 20.0.0 or higher
+- **RAM**: 1GB minimum (2GB recommended)
+- **Storage**: 2GB free space
+- **OS**: Ubuntu 20.04+ (or similar Linux distribution)
 
-Perfect for EC2, DigitalOcean, or any Ubuntu server:
-
-1. **SSH into your server**:
-   ```bash
-   ssh -i "key.pem" ubuntu@your-server-ip
-   ```
-
-2. **Install Node.js 20+** (required):
-   ```bash
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-   sudo apt-get install -y nodejs
-   ```
-
-3. **Deploy SpecGen** (one command setup with cleanup):
-   ```bash
-   mkdir specgen && cd specgen
-   npx @gv-sh/specgen-app setup
-   npx @gv-sh/specgen-app deploy
-   ```
-
-4. **Access your application**:
-   - **Main**: http://your-server-ip:8080/
-   - **User App**: http://your-server-ip:8080/app
-   - **Admin Panel**: http://your-server-ip:8080/admin
-
-### Option 2: Manual Setup
+### Quick Server Setup (Ubuntu)
 
 ```bash
-# Clone and setup manually
+# Install Node.js 20+
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify installation
+node --version  # Should show v20.x.x or higher
+npm --version
+```
+
+## 📋 Deployment Methods
+
+### Method 1: Direct NPX Deployment (Easiest)
+
+```bash
+# SSH into your server
+ssh -i "your-key.pem" ubuntu@your-server-ip
+
+# Create project and deploy
+mkdir specgen && cd specgen
+npx @gv-sh/specgen-app deploy
+```
+
+### Method 2: Development Mode
+
+For local development with separate ports:
+
+```bash
+mkdir specgen-dev && cd specgen-dev
+npx @gv-sh/specgen-app setup
+npx @gv-sh/specgen-app dev
+```
+
+**Development URLs:**
+- User Interface: http://localhost:3002
+- Admin Interface: http://localhost:3001  
+- API Server: http://localhost:8080
+
+### Method 3: Manual Deployment
+
+If you prefer more control:
+
+```bash
+# Clone repository
 git clone https://github.com/gv-sh/specgen-app.git
 cd specgen-app
+
+# Setup and deploy
 npm run setup
 npm run deploy
 ```
 
-## 🛠️ Setup Features
-
-The setup script now includes **comprehensive cleanup**:
-
-- ✅ **PM2 Process Cleanup**: Stops and removes existing PM2 processes
-- ✅ **Port Liberation**: Frees up ports 8080, 3000, 3001, 3002
-- ✅ **Nginx Cleanup**: Removes conflicting nginx configurations
-- ✅ **Docker Cleanup**: Removes any existing SpecGen containers
-- ✅ **Service Cleanup**: Removes systemd services
-- ✅ **File Cleanup**: Removes old installations and log files
-- ✅ **Low Memory Optimization**: Optimized for servers with limited RAM
-
-## 📋 Available Commands
-
-### Core Commands
-```bash
-# Setup with cleanup (one-time)
-npx @gv-sh/specgen-app setup
-
-# Development mode (separate ports)
-npx @gv-sh/specgen-app dev
-
-# Production mode (direct run on port 8080)
-npx @gv-sh/specgen-app production
-
-# Production deployment with PM2 (recommended)
-npx @gv-sh/specgen-app deploy
-```
-
-### Management Commands
-```bash
-# Check deployment status
-npx @gv-sh/specgen-app deploy:status
-
-# Stop all services
-npx @gv-sh/specgen-app deploy:stop
-
-# Restart services
-npx @gv-sh/specgen-app deploy:restart
-```
-
-### Using NPM Scripts (if you cloned the repo)
-```bash
-npm run setup      # Setup with cleanup
-npm run dev        # Development mode
-npm run production # Production mode
-npm run deploy     # Deploy with PM2
-```
-
 ## 🔧 Configuration
 
-### OpenAI API Key
-You'll be prompted for your OpenAI API key during setup. If you skip it, add it later to `server/.env`:
+### OpenAI API Key Setup
 
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-NODE_ENV=production
-PORT=8080
-```
-
-### Environment Files
-The setup automatically creates optimized environment files:
-- `server/.env` - Server configuration (port 8080)
-- `admin/.env.development` - Admin dev settings
-- `user/.env.development` - User dev settings
-
-## 🐳 Docker Alternative
-
-If you prefer Docker:
+During deployment, you'll be prompted for your OpenAI API key. You can also set it manually:
 
 ```bash
-# Quick Docker setup
-docker run -d \
-  --name specgen \
-  -p 8080:8080 \
-  -e OPENAI_API_KEY=your_key_here \
-  gvsh/specgen-app:latest
+# Create/edit the environment file
+echo "OPENAI_API_KEY=your_openai_api_key_here" > server/.env
+echo "NODE_ENV=production" >> server/.env
+echo "PORT=8080" >> server/.env
+
+# Restart the service
+npx pm2 restart specgen --update-env
 ```
 
-## 📊 Management with PM2
+### Environment Variables
 
-When deployed with `npm run deploy`, you get PM2 process management:
+The deployment creates these configuration files:
+- `server/.env` - Server configuration (port 8080, API key)
+- `admin/.env.development` - Admin development settings  
+- `user/.env.development` - User development settings
+
+## 📊 Process Management
+
+The deployment uses PM2 for process management:
 
 ```bash
 # Check status
 npx pm2 status
 
-# View logs
+# View logs  
 npx pm2 logs specgen
 
-# Restart
+# Restart application
 npx pm2 restart specgen
 
-# Stop
+# Stop application
 npx pm2 stop specgen
 
-# Monitor
+# Monitor resources
 npx pm2 monit
 ```
 
 ## 🔍 Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
-1. **Port 8080 Already in Use**:
-   ```bash
-   # The setup script handles this automatically, but if needed:
-   sudo lsof -ti:8080 | xargs kill -9
-   ```
-
-2. **Out of Memory on Small Servers**:
-   ```bash
-   # Add swap space (setup script suggests this)
-   sudo fallocate -l 2G /swapfile
-   sudo chmod 600 /swapfile
-   sudo mkswap /swapfile
-   sudo swapon /swapfile
-   ```
-
-3. **Node.js Version Issues**:
-   ```bash
-   # Ensure Node.js 20+ is installed
-   node --version  # Should be v20+
-   ```
-
-4. **SQLite3 Binding Errors**:
-   ```bash
-   # The setup script includes engine-strict=false
-   # If issues persist, run setup again - it includes full cleanup
-   npx @gv-sh/specgen-app setup
-   ```
-
-### Health Check
-Test if your deployment is working:
+#### 1. Port 8080 Already in Use
 ```bash
-curl http://localhost:8080/api/health
-# Should return: {"status":"ok","port":8080}
+# Check what's using the port
+sudo lsof -i :8080
+
+# Kill the process
+sudo lsof -ti:8080 | xargs kill -9
+
+# Redeploy
+npx @gv-sh/specgen-app deploy
 ```
 
-## 🚨 Breaking Changes from Previous Versions
+#### 2. Frontend Not Loading (404 Errors)
+```bash
+# Check if builds exist
+ls -la admin/build/
+ls -la user/build/
 
-- **Port Change**: Default port changed from 3000 → 8080
-- **URL Structure**: Admin at `/admin`, User at `/app`
-- **Simplified Scripts**: Single `setup` and `production` commands
-- **Automatic Cleanup**: Setup now cleans existing installations
+# If missing, manually rebuild
+cd admin && npm install && GENERATE_SOURCEMAP=false PUBLIC_URL=/admin npm run build
+cd ../user && npm install && GENERATE_SOURCEMAP=false REACT_APP_API_URL=/api PUBLIC_URL=/app npm run build
+
+# Restart server
+npx pm2 restart specgen
+```
+
+#### 3. OpenAI API Key Issues
+```bash
+# Check current environment
+npx pm2 env 0
+
+# Update API key
+echo "OPENAI_API_KEY=your_new_key_here" > server/.env
+echo "NODE_ENV=production" >> server/.env
+echo "PORT=8080" >> server/.env
+
+# Restart with new environment
+npx pm2 restart specgen --update-env
+```
+
+#### 4. Out of Memory Errors
+```bash
+# Add swap space (2GB recommended)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Verify swap is active
+free -h
+```
+
+#### 5. Node.js Version Issues
+```bash
+# Check current version
+node --version
+
+# If less than v20, update:
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+### Debugging Commands
+
+```bash
+# Test API health
+curl http://localhost:8080/api/health
+
+# Test main page response
+curl -I http://localhost:8080/
+
+# Check server logs
+npx pm2 logs specgen --lines 50
+
+# Check build status
+ls -la */build/ 2>/dev/null || echo "No builds found"
+
+# Check processes listening on port 8080
+sudo netstat -tlnp | grep :8080
+```
+
+### Manual Build Process
+
+If automatic builds fail, try manual building:
+
+```bash
+# Stop current deployment
+npx pm2 stop specgen
+
+# Manual server setup
+npm pack @gv-sh/specgen-server
+tar -xzf gv-sh-specgen-server-*.tgz
+mv package server
+cd server && npm install && cd ..
+
+# Manual admin build
+npm pack @gv-sh/specgen-admin  
+tar -xzf gv-sh-specgen-admin-*.tgz
+mv package admin
+cd admin && npm install && GENERATE_SOURCEMAP=false PUBLIC_URL=/admin npm run build && cd ..
+
+# Manual user build
+npm pack @gv-sh/specgen-user
+tar -xzf gv-sh-specgen-user-*.tgz  
+mv package user
+cd user && npm install && GENERATE_SOURCEMAP=false REACT_APP_API_URL=/api PUBLIC_URL=/app npm run build && cd ..
+
+# Restart deployment
+npx pm2 start server/index.js --name specgen
+```
+
+## 🚨 Known Issues
+
+### Current Limitations
+- **Memory Usage**: Requires at least 1GB RAM for builds
+- **Build Time**: Initial deployment can take 5-10 minutes
+- **SQLite Dependencies**: May require build tools on some systems
+- **Static File Serving**: Builds must complete successfully for frontend access
+
+### AWS EC2 Specific
+- **Security Groups**: Ensure port 8080 is open in your security group
+- **Instance Type**: t2.micro may struggle with builds (t2.small recommended)
+- **Storage**: Ensure at least 2GB free space for node_modules and builds
 
 ## 📚 API Documentation
 
-Once deployed, access the interactive API documentation at:
+Once deployed, access interactive API documentation at:
 - **Swagger UI**: http://your-server:8080/api-docs
 
-## 🤝 Contributing
+### Key API Endpoints
+- `GET /api/health` - Health check and system status
+- `POST /api/generate` - Generate speculative fiction content
+- `GET /api/categories` - List available story categories
+- `GET /api/parameters` - Get generation parameters
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+## 🔄 Updates and Maintenance
+
+### Updating SpecGen
+```bash
+# Stop current deployment
+npx pm2 stop specgen
+
+# Clean up old installation
+rm -rf admin user server node_modules
+
+# Deploy latest version
+npx @gv-sh/specgen-app deploy
+```
+
+### Backup Important Data
+```bash
+# Backup database and configurations
+tar -czf specgen-backup-$(date +%Y%m%d).tar.gz server/data server/.env logs/
+```
+
+## 🤝 Support
+
+### Getting Help
+- **Health Check**: Visit http://your-server:8080/api/health
+- **Logs**: Run `npx pm2 logs specgen`
+- **Issues**: [GitHub Issues](https://github.com/gv-sh/specgen-app/issues)
+- **Status**: Run `npx pm2 status` to check process status
+
+### Reporting Bugs
+When reporting issues, please include:
+- Output of `npx pm2 logs specgen`
+- Output of `curl http://localhost:8080/api/health`
+- Your server specifications (RAM, OS version, Node.js version)
+- Any error messages from the deployment process
 
 ## 📄 License
 
 This project is licensed under the ISC License.
-
-## 🆘 Support
-
-- **Issues**: [GitHub Issues](https://github.com/gv-sh/specgen-app/issues)
-- **Documentation**: Check `/api-docs` when running
-- **Health Check**: Visit `/api/health` to verify installation
