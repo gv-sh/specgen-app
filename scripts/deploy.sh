@@ -11,9 +11,8 @@ if [ "$1" = "--dry-run" ] || [ "$1" = "-d" ]; then
     echo "🖥️  Platform: $(uname -s) $(uname -m)"
 else
     echo "🚀 Deploying SpecGen to production on port 8080..."
+    echo "📦 This is a complete deployment - no separate setup needed!"
 fi
-
-echo "📦 This is a complete deployment - no separate setup needed!"
 
 # Function to check if port is available
 check_port() {
@@ -26,7 +25,13 @@ check_port() {
 }
 
 # Get absolute path of current working directory
-PROJECT_DIR=$(pwd)
+# In dry-run, use the actual working directory, not NPX cache
+if [ "$DRY_RUN" = true ]; then
+    PROJECT_DIR=$(pwd)
+else
+    PROJECT_DIR=$(pwd)
+fi
+
 echo "📂 Project directory: $PROJECT_DIR"
 
 # ========================================
@@ -74,6 +79,7 @@ if [ "$DRY_RUN" = false ]; then
     rm -rf logs/* 2>/dev/null || true
 else
     echo "🧪 DRY RUN: Skipping cleanup (existing processes will remain)"
+    echo "   This is a safe test that won't affect your system"
 fi
 
 # ========================================
@@ -82,18 +88,35 @@ fi
 
 echo "🔍 Checking prerequisites..."
 
-# Check Node.js version
+# Check Node.js version (more lenient for dry-run)
 NODE_VERSION=$(node --version | sed 's/v//' | cut -d. -f1)
-if [ "$NODE_VERSION" -lt 20 ]; then
-    echo "❌ Node.js 20+ required. Current version: $(node --version)"
-    if [ "$PLATFORM" = "Darwin" ]; then
-        echo "Install with: brew install node@20"
+if [ "$DRY_RUN" = true ]; then
+    # More lenient for dry-run testing
+    if [ "$NODE_VERSION" -lt 18 ]; then
+        echo "❌ Node.js 18+ required for testing. Current version: $(node --version)"
+        if [ "$PLATFORM" = "Darwin" ]; then
+            echo "Install with: brew install node"
+        fi
+        exit 1
     else
-        echo "Install with: curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs"
+        echo "✅ Node.js version: $(node --version) (sufficient for testing)"
+        if [ "$NODE_VERSION" -lt 20 ]; then
+            echo "   ⚠️  Note: Production deployment requires Node.js 20+"
+        fi
     fi
-    exit 1
 else
-    echo "✅ Node.js version: $(node --version)"
+    # Strict for production
+    if [ "$NODE_VERSION" -lt 20 ]; then
+        echo "❌ Node.js 20+ required for production. Current version: $(node --version)"
+        if [ "$PLATFORM" = "Darwin" ]; then
+            echo "Install with: brew install node@20"
+        else
+            echo "Install with: curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs"
+        fi
+        exit 1
+    else
+        echo "✅ Node.js version: $(node --version)"
+    fi
 fi
 
 # Check npm
@@ -114,13 +137,19 @@ elif [ "$PLATFORM" = "Linux" ]; then
     fi
 fi
 
+# Check if we have required tools
+echo "✅ Platform tools:"
+echo "   curl: $(which curl >/dev/null && echo "available" || echo "missing")"
+echo "   tar: $(which tar >/dev/null && echo "available" || echo "missing")"
+echo "   lsof: $(which lsof >/dev/null && echo "available" || echo "missing")"
+
 # ========================================
 # SETUP OPENAI API KEY
 # ========================================
 
 echo "🔑 Setting up OpenAI API key..."
 
-# In dry-run mode, use a test key
+# In dry-run mode, always use a test key
 if [ "$DRY_RUN" = true ]; then
     echo "🧪 DRY RUN: Using test API key"
     mkdir -p "$PROJECT_DIR/server"
@@ -136,7 +165,7 @@ elif [ ! -f "$PROJECT_DIR/server/.env" ] || grep -q "your_openai_api_key_here" "
         echo "PORT=8080" >> "$PROJECT_DIR/server/.env"
     else
         echo "⚠️ OpenAI API key required for SpecGen to work."
-        echo "Enter your OpenAI API key (or press Enter to use test key for dry-run): "
+        echo "Enter your OpenAI API key (or press Enter to use test key): "
         read -r OPENAI_KEY
         
         if [ -z "$OPENAI_KEY" ]; then
@@ -327,38 +356,53 @@ if [ "$DRY_RUN" = true ]; then
     # Copy environment
     cp "$PROJECT_DIR/server/.env" "$PROJECT_DIR/.env" 2>/dev/null || true
     
-    echo "   Starting test server on port 8080 for 10 seconds..."
+    # Check if port 8080 is available for testing
+    if ! check_port 8080; then
+        echo "   ⚠️  Port 8080 is in use, testing on port 8081 instead"
+        TEST_PORT=8081
+        sed -i.bak 's/PORT=8080/PORT=8081/' "$PROJECT_DIR/server/.env"
+    else
+        TEST_PORT=8080
+    fi
+    
+    echo "   Starting test server on port $TEST_PORT for 10 seconds..."
     
     # Start server in background
-    (cd server && NODE_ENV=production PORT=8080 node index.js) &
+    (cd server && NODE_ENV=production PORT=$TEST_PORT node index.js) &
     SERVER_PID=$!
     
     # Wait a bit for server to start
     sleep 3
     
     # Test the endpoints
-    echo "   Testing endpoints:"
+    echo "   Testing endpoints on port $TEST_PORT:"
     
-    if curl -s http://localhost:8080/api/health >/dev/null 2>&1; then
+    if curl -s http://localhost:$TEST_PORT/api/health >/dev/null 2>&1; then
         echo "   ✅ Health endpoint: OK"
-        echo "      Response: $(curl -s http://localhost:8080/api/health | head -c 100)..."
+        HEALTH_RESPONSE=$(curl -s http://localhost:$TEST_PORT/api/health)
+        echo "      Status: $(echo $HEALTH_RESPONSE | grep -o '"status":"[^"]*"' | cut -d'"' -f4)"
     else
         echo "   ❌ Health endpoint: FAILED"
     fi
     
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TEST_PORT/ 2>/dev/null || echo "000")
     echo "   📄 Main page: HTTP $HTTP_CODE"
     
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/admin 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TEST_PORT/admin 2>/dev/null || echo "000")
     echo "   ⚙️  Admin page: HTTP $HTTP_CODE"
     
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/app 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TEST_PORT/app 2>/dev/null || echo "000")
     echo "   👤 User page: HTTP $HTTP_CODE"
     
     # Stop test server
     sleep 2
     kill $SERVER_PID 2>/dev/null || true
     wait $SERVER_PID 2>/dev/null || true
+    
+    # Restore original .env if we changed it
+    if [ -f "$PROJECT_DIR/server/.env.bak" ]; then
+        mv "$PROJECT_DIR/server/.env.bak" "$PROJECT_DIR/server/.env"
+    fi
     
     echo ""
     echo "🎉 DRY RUN COMPLETED!"
@@ -369,10 +413,17 @@ if [ "$DRY_RUN" = true ]; then
     echo "   ✅ React apps built successfully"
     echo "   ✅ Server can start and respond"
     echo ""
+    if [ "$NODE_VERSION" -lt 20 ]; then
+        echo "⚠️  Note for AWS deployment:"
+        echo "   Your Mac has Node.js $(node --version)"
+        echo "   AWS deployment requires Node.js 20+"
+        echo "   Make sure your AWS server has the right version"
+        echo ""
+    fi
     echo "🚀 Ready for production deployment!"
-    echo "   Run without --dry-run to deploy for real"
+    echo "   Deploy to AWS with: npx @gv-sh/specgen-app deploy"
     echo ""
-    echo "🔧 To test locally:"
+    echo "🔧 To test locally right now:"
     echo "   cd server && npm start"
     echo "   Open http://localhost:8080/"
     
