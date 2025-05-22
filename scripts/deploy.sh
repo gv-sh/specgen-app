@@ -130,7 +130,9 @@ if [ ! -d "admin/build" ]; then
     
     cd admin
     echo "engine-strict=false" > .npmrc
-    npm install --no-fund --no-audit --production --maxsockets=2 --loglevel=warn
+    # Install ALL dependencies for build process
+    npm install --no-fund --no-audit --maxsockets=2 --loglevel=warn
+    # Build with proper environment variables (no cross-env needed on Linux)
     GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true PUBLIC_URL=/admin npm run build
     cd ..
 fi
@@ -147,7 +149,9 @@ if [ ! -d "user/build" ]; then
     
     cd user
     echo "engine-strict=false" > .npmrc
-    npm install --no-fund --no-audit --production --maxsockets=2 --loglevel=warn
+    # Install ALL dependencies for build process
+    npm install --no-fund --no-audit --maxsockets=2 --loglevel=warn
+    # Build with proper environment variables (no cross-env needed on Linux)
     GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true REACT_APP_API_URL=/api PUBLIC_URL=/app npm run build
     cd ..
 fi
@@ -159,11 +163,13 @@ fi
 echo "✅ Verifying builds..."
 if [ ! -d "admin/build" ]; then
     echo "❌ Admin build failed"
+    ls -la admin/ || echo "Admin directory not found"
     exit 1
 fi
 
 if [ ! -d "user/build" ]; then
     echo "❌ User build failed"
+    ls -la user/ || echo "User directory not found"
     exit 1
 fi
 
@@ -171,6 +177,12 @@ echo "📁 Build verification:"
 echo "   Admin build: $(ls -la admin/build/ | wc -l) files"
 echo "   User build: $(ls -la user/build/ | wc -l) files"
 echo "   Server: $(ls -la server/ | wc -l) files"
+
+# Show some sample files to verify builds
+echo "📄 Admin build files:"
+ls admin/build/ | head -5
+echo "📄 User build files:"
+ls user/build/ | head -5
 
 # ========================================
 # PM2 DEPLOYMENT
@@ -208,6 +220,9 @@ EOF
 # Create logs directory
 mkdir -p logs
 
+# Copy .env to ensure PM2 picks it up
+cp server/.env .env 2>/dev/null || true
+
 # Final port check
 if ! check_port 8080; then
     echo "Port 8080 occupied, force cleaning..."
@@ -240,23 +255,33 @@ if npx pm2 list | grep -q "online"; then
     fi
     
     # Test main page
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ | grep -q "200"; then
-        echo "✅ Main page: OK"
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ 2>/dev/null)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "✅ Main page: OK (HTTP $HTTP_CODE)"
     else
-        echo "⚠️ Main page: Check logs"
+        echo "⚠️ Main page: HTTP $HTTP_CODE (check if builds are served correctly)"
     fi
     
     # Test admin
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/admin | grep -q "200"; then
-        echo "✅ Admin page: OK"
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/admin 2>/dev/null)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "✅ Admin page: OK (HTTP $HTTP_CODE)"
     else
-        echo "⚠️ Admin page: Check logs"
+        echo "⚠️ Admin page: HTTP $HTTP_CODE"
+    fi
+    
+    # Test user app
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/app 2>/dev/null)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "✅ User app: OK (HTTP $HTTP_CODE)"
+    else
+        echo "⚠️ User app: HTTP $HTTP_CODE"
     fi
     
     PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s ipecho.net/plain 2>/dev/null || echo 'your-server')
     
     echo ""
-    echo "🎉 SpecGen deployment completed successfully!"
+    echo "🎉 SpecGen deployment completed!"
     echo ""
     echo "🌐 Access your application at:"
     echo "   - Main page: http://$PUBLIC_IP:8080/"
@@ -266,9 +291,14 @@ if npx pm2 list | grep -q "online"; then
     echo "   - Health check: http://$PUBLIC_IP:8080/api/health"
     echo ""
     echo "📊 Management:"
-    echo "   npx pm2 status     # Check status"
-    echo "   npx pm2 logs       # View logs"
+    echo "   npx pm2 status           # Check status"
+    echo "   npx pm2 logs specgen     # View logs"
     echo "   npx pm2 restart specgen  # Restart"
+    echo ""
+    echo "🔧 Troubleshooting:"
+    echo "   curl http://localhost:8080/api/health     # Test API"
+    echo "   curl -I http://localhost:8080/            # Test main page"
+    echo "   ls -la */build/                           # Check builds"
     echo ""
     
 else
@@ -276,6 +306,8 @@ else
     echo "❌ Deployment failed!"
     echo "📝 Check logs: npx pm2 logs specgen"
     echo "📊 Check status: npx pm2 status"
+    echo ""
+    echo "Recent logs:"
     npx pm2 logs specgen --lines 10
     exit 1
 fi
