@@ -232,6 +232,170 @@ if [ ! -f "server/index.js" ]; then
     fi
     
     cd "$PROJECT_DIR"
+    
+    # Replace with unified server that serves static files
+    echo "   🔧 Installing unified server for port 8080..."
+    cat > server/index.js << 'EOF'
+// index.js - Unified server for port 8080 with proper routing
+/* global process */
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const errorHandler = require('./middleware/errorHandler');
+
+// Initialize Express app
+const app = express();
+let PORT = process.env.PORT || 8080;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files for admin interface at /admin
+const adminBuildPath = path.join(__dirname, '../admin/build');
+const fs = require('fs');
+if (fs.existsSync(adminBuildPath)) {
+  app.use('/admin', express.static(adminBuildPath));
+  // Handle React Router for admin (catch all admin routes)
+  app.get('/admin/*', (req, res) => {
+    res.sendFile(path.join(adminBuildPath, 'index.html'));
+  });
+  console.log('✅ Admin interface available at /admin');
+} else {
+  console.log('⚠️ Admin build not found at', adminBuildPath);
+}
+
+// Serve static files for user interface at /app  
+const userBuildPath = path.join(__dirname, '../user/build');
+if (fs.existsSync(userBuildPath)) {
+  app.use('/app', express.static(userBuildPath));
+  // Handle React Router for user app (catch all app routes)
+  app.get('/app/*', (req, res) => {
+    res.sendFile(path.join(userBuildPath, 'index.html'));
+  });
+  console.log('✅ User interface available at /app');
+} else {
+  console.log('⚠️ User build not found at', userBuildPath);
+}
+
+// Serve user interface as default at root (/) as well
+if (fs.existsSync(userBuildPath)) {
+  app.use('/', express.static(userBuildPath, { index: false }));
+}
+
+// Routes
+const categoryRoutes = require('./routes/categories');
+const parameterRoutes = require('./routes/parameters');
+const generateRoutes = require('./routes/generate');
+const databaseRoutes = require('./routes/database');
+const contentRoutes = require('./routes/content');
+const settingsRoutes = require('./routes/settings');
+
+// API Routes
+app.use('/api/categories', categoryRoutes);
+app.use('/api/parameters', parameterRoutes);
+app.use('/api/generate', generateRoutes);
+app.use('/api/database', databaseRoutes);
+app.use('/api/content', contentRoutes);
+app.use('/api/settings', settingsRoutes);
+
+// Only add Swagger in non-test environment
+if (process.env.NODE_ENV !== 'test') {
+  const swaggerRoutes = require('./routes/swagger');
+  app.use('/api-docs', swaggerRoutes);
+}
+
+// Health check routes
+const healthRoutes = require('./routes/health');
+app.use('/api/health', healthRoutes);
+
+// Root route - serve user app or provide navigation
+app.get('/', (req, res) => {
+  // If user build exists, serve it
+  if (fs.existsSync(userBuildPath)) {
+    res.sendFile(path.join(userBuildPath, 'index.html'));
+  } else {
+    // Fallback navigation page
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SpecGen - API & Applications</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f8f9fa; }
+        .nav-card { border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 15px 0; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .nav-card:hover { background-color: #f8f9fa; transform: translateY(-2px); transition: all 0.2s; }
+        a { text-decoration: none; color: #007bff; }
+        h1 { color: #343a40; text-align: center; }
+        .status { color: #28a745; font-weight: bold; text-align: center; background: #d4edda; padding: 10px; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #6c757d; font-size: 14px; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🚀 SpecGen Platform</h1>
+    <div class="status">✅ All services running on port ${PORT}</div>
+    
+    <div class="warning">
+        <strong>🔒 AWS Security Group Note:</strong> If you can't access this from outside, 
+        add port ${PORT} to your AWS Security Group inbound rules.
+    </div>
+    
+    <div class="nav-card">
+        <h3><a href="/app">📱 User Application</a></h3>
+        <p>Main SpecGen user interface for creating and managing specifications</p>
+    </div>
+    
+    <div class="nav-card">
+        <h3><a href="/admin">⚙️ Admin Panel</a></h3>
+        <p>Administrative interface for system management and configuration</p>
+    </div>
+    
+    <div class="nav-card">
+        <h3><a href="/api-docs">📚 API Documentation</a></h3>
+        <p>Interactive API documentation and testing interface</p>
+    </div>
+    
+    <div class="nav-card">
+        <h3><a href="/api/health">❤️ Health Check</a></h3>
+        <p>System health and status monitoring endpoint</p>
+    </div>
+    
+    <div class="footer">
+        <p><strong>API Base URL:</strong> <code>http://your-server:${PORT}/api</code></p>
+        <p><strong>Environment:</strong> ${process.env.NODE_ENV || 'development'}</p>
+        <p><strong>Server Time:</strong> ${new Date().toISOString()}</p>
+    </div>
+</body>
+</html>`;
+    res.send(html);
+  }
+});
+
+// Error handling middleware
+app.use(errorHandler);
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 SpecGen unified server running on port ${PORT}`);
+    console.log(`📱 User App: http://localhost:${PORT}/app`);
+    console.log(`⚙️ Admin Panel: http://localhost:${PORT}/admin`);
+    console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
+    console.log(`❤️ Health Check: http://localhost:${PORT}/api/health`);
+    console.log(`🏠 Main Page: http://localhost:${PORT}/`);
+    console.log(`🔒 AWS Note: Ensure port ${PORT} is open in Security Groups`);
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`- API Documentation: http://localhost:${PORT}/api-docs`);
+    }
+    console.log(`- API is ready for use`);
+  });
+}
+
+module.exports = app;
+EOF
+    echo "✅ Unified server installed"
 fi
 
 # Install and build admin
@@ -388,10 +552,10 @@ if [ "$DRY_RUN" = true ]; then
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TEST_PORT/ 2>/dev/null || echo "000")
     echo "   📄 Main page: HTTP $HTTP_CODE"
     
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TEST_PORT/admin 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TEST_PORT/admin/ 2>/dev/null || echo "000")
     echo "   ⚙️  Admin page: HTTP $HTTP_CODE"
     
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TEST_PORT/app 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$TEST_PORT/app/ 2>/dev/null || echo "000")
     echo "   👤 User page: HTTP $HTTP_CODE"
     
     # Stop test server
@@ -411,6 +575,7 @@ if [ "$DRY_RUN" = true ]; then
     echo "   ✅ All packages downloaded and extracted"
     echo "   ✅ All dependencies installed"
     echo "   ✅ React apps built successfully"
+    echo "   ✅ Unified server installed"
     echo "   ✅ Server can start and respond"
     echo ""
     if [ "$NODE_VERSION" -lt 20 ]; then
@@ -422,6 +587,11 @@ if [ "$DRY_RUN" = true ]; then
     fi
     echo "🚀 Ready for production deployment!"
     echo "   Deploy to AWS with: npx @gv-sh/specgen-app deploy"
+    echo ""
+    echo "🔒 AWS Deployment Notes:"
+    echo "   1. Ensure Node.js 20+ on your AWS instance"
+    echo "   2. Add port 8080 to Security Group inbound rules"
+    echo "   3. Run: npx @gv-sh/specgen-app deploy"
     echo ""
     echo "🔧 To test locally right now:"
     echo "   cd server && npm start"
@@ -495,10 +665,10 @@ EOF
         HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ 2>/dev/null)
         echo "📄 Main page: HTTP $HTTP_CODE"
         
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/admin 2>/dev/null)
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/admin/ 2>/dev/null)
         echo "⚙️  Admin page: HTTP $HTTP_CODE"
         
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/app 2>/dev/null)
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/app/ 2>/dev/null)
         echo "👤 User page: HTTP $HTTP_CODE"
         
         PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s ipecho.net/plain 2>/dev/null || echo 'your-server')
@@ -508,10 +678,15 @@ EOF
         echo ""
         echo "🌐 Access your application at:"
         echo "   - Main page: http://$PUBLIC_IP:8080/"
-        echo "   - User app: http://$PUBLIC_IP:8080/app"
-        echo "   - Admin panel: http://$PUBLIC_IP:8080/admin"
+        echo "   - User app: http://$PUBLIC_IP:8080/app/"
+        echo "   - Admin panel: http://$PUBLIC_IP:8080/admin/"
         echo "   - API docs: http://$PUBLIC_IP:8080/api-docs"
         echo "   - Health check: http://$PUBLIC_IP:8080/api/health"
+        echo ""
+        echo "🔒 AWS Security Group:"
+        echo "   If you can't access from outside, add port 8080 to inbound rules:"
+        echo "   EC2 Console → Security Groups → Edit Inbound Rules → Add Rule"
+        echo "   Type: Custom TCP, Port: 8080, Source: 0.0.0.0/0"
         echo ""
         echo "📊 Management commands:"
         echo "   $PM2_CMD status           # Check status"
