@@ -16,6 +16,10 @@ check_port() {
     fi
 }
 
+# Get absolute path of current working directory
+PROJECT_DIR=$(pwd)
+echo "📂 Project directory: $PROJECT_DIR"
+
 # ========================================
 # FULL CLEANUP
 # ========================================
@@ -56,16 +60,6 @@ if [ "$NODE_VERSION" -lt 20 ]; then
     exit 1
 fi
 
-# Check if we have the required directories and files
-echo "📂 Checking project structure..."
-if [ ! -f "package.json" ]; then
-    echo "❌ package.json not found. This script must be run from the SpecGen project directory."
-    echo "💡 Create a directory and run this script from there:"
-    echo "   mkdir specgen && cd specgen"
-    echo "   npx @gv-sh/specgen-app deploy"
-    exit 1
-fi
-
 # ========================================
 # SETUP OPENAI API KEY
 # ========================================
@@ -73,13 +67,13 @@ fi
 echo "🔑 Setting up OpenAI API key..."
 
 # Check if .env exists and has API key
-if [ ! -f "server/.env" ] || grep -q "your_openai_api_key_here" server/.env 2>/dev/null; then
+if [ ! -f "$PROJECT_DIR/server/.env" ] || grep -q "your_openai_api_key_here" "$PROJECT_DIR/server/.env" 2>/dev/null; then
     if [ "$CI" = "true" ]; then
         echo "CI mode - using test API key"
-        mkdir -p server
-        echo "OPENAI_API_KEY=sk-test1234" > server/.env
-        echo "NODE_ENV=production" >> server/.env
-        echo "PORT=8080" >> server/.env
+        mkdir -p "$PROJECT_DIR/server"
+        echo "OPENAI_API_KEY=sk-test1234" > "$PROJECT_DIR/server/.env"
+        echo "NODE_ENV=production" >> "$PROJECT_DIR/server/.env"
+        echo "PORT=8080" >> "$PROJECT_DIR/server/.env"
     else
         echo "⚠️ OpenAI API key required for SpecGen to work."
         echo "Enter your OpenAI API key: "
@@ -90,10 +84,10 @@ if [ ! -f "server/.env" ] || grep -q "your_openai_api_key_here" server/.env 2>/d
             exit 1
         fi
         
-        mkdir -p server
-        echo "OPENAI_API_KEY=$OPENAI_KEY" > server/.env
-        echo "NODE_ENV=production" >> server/.env
-        echo "PORT=8080" >> server/.env
+        mkdir -p "$PROJECT_DIR/server"
+        echo "OPENAI_API_KEY=$OPENAI_KEY" > "$PROJECT_DIR/server/.env"
+        echo "NODE_ENV=production" >> "$PROJECT_DIR/server/.env"
+        echo "PORT=8080" >> "$PROJECT_DIR/server/.env"
         echo "✅ API key saved"
     fi
 fi
@@ -103,6 +97,9 @@ fi
 # ========================================
 
 echo "🏗️ Building application components..."
+
+# Navigate to project directory
+cd "$PROJECT_DIR"
 
 # Install and build server
 if [ ! -d "server" ] || [ ! -d "server/node_modules" ]; then
@@ -115,7 +112,7 @@ if [ ! -d "server" ] || [ ! -d "server/node_modules" ]; then
     cd server
     echo "engine-strict=false" > .npmrc
     npm install --no-fund --no-audit --production --maxsockets=2 --loglevel=warn
-    cd ..
+    cd "$PROJECT_DIR"
 fi
 
 # Install and build admin
@@ -134,7 +131,7 @@ if [ ! -d "admin/build" ]; then
     npm install --no-fund --no-audit --maxsockets=2 --loglevel=warn
     # Build with proper environment variables (no cross-env needed on Linux)
     GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true PUBLIC_URL=/admin npm run build
-    cd ..
+    cd "$PROJECT_DIR"
 fi
 
 # Install and build user
@@ -153,7 +150,7 @@ if [ ! -d "user/build" ]; then
     npm install --no-fund --no-audit --maxsockets=2 --loglevel=warn
     # Build with proper environment variables (no cross-env needed on Linux)
     GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true REACT_APP_API_URL=/api PUBLIC_URL=/app npm run build
-    cd ..
+    cd "$PROJECT_DIR"
 fi
 
 # ========================================
@@ -161,28 +158,35 @@ fi
 # ========================================
 
 echo "✅ Verifying builds..."
-if [ ! -d "admin/build" ]; then
+if [ ! -d "$PROJECT_DIR/admin/build" ]; then
     echo "❌ Admin build failed"
-    ls -la admin/ || echo "Admin directory not found"
+    ls -la "$PROJECT_DIR/admin/" || echo "Admin directory not found"
     exit 1
 fi
 
-if [ ! -d "user/build" ]; then
+if [ ! -d "$PROJECT_DIR/user/build" ]; then
     echo "❌ User build failed"
-    ls -la user/ || echo "User directory not found"
+    ls -la "$PROJECT_DIR/user/" || echo "User directory not found"
+    exit 1
+fi
+
+if [ ! -f "$PROJECT_DIR/server/index.js" ]; then
+    echo "❌ Server index.js not found"
+    ls -la "$PROJECT_DIR/server/" || echo "Server directory not found"
     exit 1
 fi
 
 echo "📁 Build verification:"
-echo "   Admin build: $(ls -la admin/build/ | wc -l) files"
-echo "   User build: $(ls -la user/build/ | wc -l) files"
-echo "   Server: $(ls -la server/ | wc -l) files"
+echo "   Admin build: $(ls -la "$PROJECT_DIR/admin/build/" | wc -l) files"
+echo "   User build: $(ls -la "$PROJECT_DIR/user/build/" | wc -l) files"
+echo "   Server: $(ls -la "$PROJECT_DIR/server/" | wc -l) files"
+echo "   Server script: $PROJECT_DIR/server/index.js"
 
 # Show some sample files to verify builds
 echo "📄 Admin build files:"
-ls admin/build/ | head -5
+ls "$PROJECT_DIR/admin/build/" | head -5
 echo "📄 User build files:"
-ls user/build/ | head -5
+ls "$PROJECT_DIR/user/build/" | head -5
 
 # ========================================
 # PM2 DEPLOYMENT
@@ -190,13 +194,13 @@ ls user/build/ | head -5
 
 echo "🚀 Starting PM2 deployment..."
 
-# Create PM2 ecosystem configuration
-cat > ecosystem.config.js << 'EOF'
+# Create PM2 ecosystem configuration with absolute paths
+cat > "$PROJECT_DIR/ecosystem.config.js" << EOF
 module.exports = {
   apps: [{
     name: 'specgen',
-    script: './server/index.js',
-    cwd: process.cwd(),
+    script: '$PROJECT_DIR/server/index.js',
+    cwd: '$PROJECT_DIR',
     env: {
       NODE_ENV: 'production',
       PORT: 8080
@@ -204,9 +208,9 @@ module.exports = {
     instances: 1,
     exec_mode: 'fork',
     max_memory_restart: '500M',
-    error_file: './logs/err.log',
-    out_file: './logs/out.log',
-    log_file: './logs/combined.log',
+    error_file: '$PROJECT_DIR/logs/err.log',
+    out_file: '$PROJECT_DIR/logs/out.log',
+    log_file: '$PROJECT_DIR/logs/combined.log',
     time: true,
     watch: false,
     ignore_watch: ['node_modules', 'logs', '*.log'],
@@ -218,10 +222,10 @@ module.exports = {
 EOF
 
 # Create logs directory
-mkdir -p logs
+mkdir -p "$PROJECT_DIR/logs"
 
-# Copy .env to ensure PM2 picks it up
-cp server/.env .env 2>/dev/null || true
+# Copy .env to project root for PM2
+cp "$PROJECT_DIR/server/.env" "$PROJECT_DIR/.env" 2>/dev/null || true
 
 # Final port check
 if ! check_port 8080; then
@@ -230,9 +234,21 @@ if ! check_port 8080; then
     sleep 2
 fi
 
-# Start with PM2
+# Change to project directory and start with PM2
+cd "$PROJECT_DIR"
 echo "▶️ Starting SpecGen with PM2..."
-NODE_ENV=production PORT=8080 npx pm2 start ecosystem.config.js
+echo "   Script: $PROJECT_DIR/server/index.js"
+echo "   Working Directory: $PROJECT_DIR"
+
+# Verify the script exists before starting PM2
+if [ ! -f "$PROJECT_DIR/server/index.js" ]; then
+    echo "❌ ERROR: Server script not found at $PROJECT_DIR/server/index.js"
+    echo "Contents of server directory:"
+    ls -la "$PROJECT_DIR/server/"
+    exit 1
+fi
+
+NODE_ENV=production PORT=8080 npx pm2 start "$PROJECT_DIR/ecosystem.config.js"
 
 # Wait for startup and verify
 sleep 5
@@ -259,7 +275,10 @@ if npx pm2 list | grep -q "online"; then
     if [ "$HTTP_CODE" = "200" ]; then
         echo "✅ Main page: OK (HTTP $HTTP_CODE)"
     else
-        echo "⚠️ Main page: HTTP $HTTP_CODE (check if builds are served correctly)"
+        echo "⚠️ Main page: HTTP $HTTP_CODE"
+        # Show what the server is actually serving
+        echo "Response preview:"
+        curl -s http://localhost:8080/ | head -3
     fi
     
     # Test admin
