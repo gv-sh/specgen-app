@@ -2,13 +2,20 @@
 
 [![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/gv-sh/specgen-app)
 
-A unified deployment package for the SpecGen speculative fiction generator platform.
+A unified deployment package for the SpecGen speculative fiction generator platform. **Now optimized for low-memory servers and unified on port 8080!**
+
+## 🚀 What's New
+
+- **Single Port Deployment**: Everything runs on port 8080 with clean URL paths
+- **Low Memory Default**: Optimized for small servers and EC2 instances
+- **Automatic Cleanup**: Smart setup that cleans existing installations
+- **Unified Interface**: All services accessible through one port
 
 ## Components
 
-- **Server**: Node.js API with OpenAI integration
-- **Admin**: React admin interface for content management
-- **User**: React user interface for story generation
+- **Server**: Node.js API with OpenAI integration (Port 8080)
+- **Admin**: React admin interface at `/admin`
+- **User**: React user interface at `/app` (also default at `/`)
 
 ## Quick Start
 
@@ -19,274 +26,238 @@ A unified deployment package for the SpecGen speculative fiction generator platf
 mkdir specgen-project
 cd specgen-project
 
-# Run setup directly with npx
+# Run setup (automatically includes low-memory optimizations and cleanup)
 npx @gv-sh/specgen-app setup
 
-# Start in development mode
+# Start in development mode (traditional separate ports)
 npx @gv-sh/specgen-app dev
 
-# Or start in production mode
+# Or start in production mode (unified port 8080)
 npx @gv-sh/specgen-app production
+
+# Or deploy with PM2 (recommended for servers)
+npx @gv-sh/specgen-app deploy
 ```
 
-### Low Memory Mode for Small Servers
+## 🌐 Access URLs
 
-If you're deploying on a small EC2 instance or any server with limited RAM:
+### Production Mode (Port 8080 - Unified)
+- **Main Application**: http://localhost:8080/
+- **User Interface**: http://localhost:8080/app
+- **Admin Panel**: http://localhost:8080/admin
+- **API Documentation**: http://localhost:8080/api-docs
+- **Health Check**: http://localhost:8080/api/health
+- **API Endpoints**: http://localhost:8080/api/*
 
-```bash
-# First, add swap space to prevent out-of-memory errors
-sudo fallocate -l 2G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+### Development Mode (Separate Ports)
+- **User Interface**: http://localhost:3002
+- **Admin Interface**: http://localhost:3001
+- **API Server**: http://localhost:8080
 
-# Then use the low-memory versions of the commands
-npx @gv-sh/specgen-app setup-low-memory
-npx @gv-sh/specgen-app production-low-memory
-```
+## 🖥️ Server Deployment
 
-### Using NPM Scripts
+### Option 1: Quick AWS/VPS Deployment
 
-1. **Setup**:
-   ```bash
-   npm run setup
-   ```
-   During setup, you'll be prompted to enter your OpenAI API key.
+Perfect for EC2, DigitalOcean, or any Ubuntu server:
 
-2. **Add OpenAI API Key** to `server/.env` if you skipped during setup
-
-3. **Start Development**:
-   ```bash
-   npm run dev
-   ```
-
-4. **Start Production** (optimized build with API key validation):
-   ```bash
-   npm run production
-   ```
-
-## Access URLs
-
-- User Interface: http://localhost:3002
-- Admin Interface: http://localhost:3001
-- API: http://localhost:3000
-
-## Deployment Options
-
-### Option 1: Quick NPX Deployment to Remote Server
-
-If you have SSH access to a server (like an EC2 instance), this is the fastest way to deploy:
-
-1. **Save your SSH key** to a file (e.g., `key.pem`) and set permissions:
-   ```bash
-   chmod 400 key.pem
-   ```
-
-2. **SSH into your server**:
+1. **SSH into your server**:
    ```bash
    ssh -i "key.pem" ubuntu@your-server-ip
    ```
 
-3. **Install Node.js 18 or higher**:
+2. **Install Node.js 20+** (required):
    ```bash
-   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
    sudo apt-get install -y nodejs
    ```
 
-4. **Install and run SpecGen**:
+3. **Deploy SpecGen** (one command setup with cleanup):
    ```bash
-   # Add swap space to prevent out-of-memory errors
+   mkdir specgen && cd specgen
+   npx @gv-sh/specgen-app setup
+   npx @gv-sh/specgen-app deploy
+   ```
+
+4. **Access your application**:
+   - **Main**: http://your-server-ip:8080/
+   - **User App**: http://your-server-ip:8080/app
+   - **Admin Panel**: http://your-server-ip:8080/admin
+
+### Option 2: Manual Setup
+
+```bash
+# Clone and setup manually
+git clone https://github.com/gv-sh/specgen-app.git
+cd specgen-app
+npm run setup
+npm run deploy
+```
+
+## 🛠️ Setup Features
+
+The setup script now includes **comprehensive cleanup**:
+
+- ✅ **PM2 Process Cleanup**: Stops and removes existing PM2 processes
+- ✅ **Port Liberation**: Frees up ports 8080, 3000, 3001, 3002
+- ✅ **Nginx Cleanup**: Removes conflicting nginx configurations
+- ✅ **Docker Cleanup**: Removes any existing SpecGen containers
+- ✅ **Service Cleanup**: Removes systemd services
+- ✅ **File Cleanup**: Removes old installations and log files
+- ✅ **Low Memory Optimization**: Optimized for servers with limited RAM
+
+## 📋 Available Commands
+
+### Core Commands
+```bash
+# Setup with cleanup (one-time)
+npx @gv-sh/specgen-app setup
+
+# Development mode (separate ports)
+npx @gv-sh/specgen-app dev
+
+# Production mode (direct run on port 8080)
+npx @gv-sh/specgen-app production
+
+# Production deployment with PM2 (recommended)
+npx @gv-sh/specgen-app deploy
+```
+
+### Management Commands
+```bash
+# Check deployment status
+npx @gv-sh/specgen-app deploy:status
+
+# Stop all services
+npx @gv-sh/specgen-app deploy:stop
+
+# Restart services
+npx @gv-sh/specgen-app deploy:restart
+```
+
+### Using NPM Scripts (if you cloned the repo)
+```bash
+npm run setup      # Setup with cleanup
+npm run dev        # Development mode
+npm run production # Production mode
+npm run deploy     # Deploy with PM2
+```
+
+## 🔧 Configuration
+
+### OpenAI API Key
+You'll be prompted for your OpenAI API key during setup. If you skip it, add it later to `server/.env`:
+
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+NODE_ENV=production
+PORT=8080
+```
+
+### Environment Files
+The setup automatically creates optimized environment files:
+- `server/.env` - Server configuration (port 8080)
+- `admin/.env.development` - Admin dev settings
+- `user/.env.development` - User dev settings
+
+## 🐳 Docker Alternative
+
+If you prefer Docker:
+
+```bash
+# Quick Docker setup
+docker run -d \
+  --name specgen \
+  -p 8080:8080 \
+  -e OPENAI_API_KEY=your_key_here \
+  gvsh/specgen-app:latest
+```
+
+## 📊 Management with PM2
+
+When deployed with `npm run deploy`, you get PM2 process management:
+
+```bash
+# Check status
+npx pm2 status
+
+# View logs
+npx pm2 logs specgen
+
+# Restart
+npx pm2 restart specgen
+
+# Stop
+npx pm2 stop specgen
+
+# Monitor
+npx pm2 monit
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+1. **Port 8080 Already in Use**:
+   ```bash
+   # The setup script handles this automatically, but if needed:
+   sudo lsof -ti:8080 | xargs kill -9
+   ```
+
+2. **Out of Memory on Small Servers**:
+   ```bash
+   # Add swap space (setup script suggests this)
    sudo fallocate -l 2G /swapfile
    sudo chmod 600 /swapfile
    sudo mkswap /swapfile
    sudo swapon /swapfile
-   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-   
-   # Create and enter project directory
-   mkdir specgen
-   cd specgen
-   
-   # Run the setup with low memory optimization
-   npx @gv-sh/specgen-app setup-low-memory
-   
-   # Start in production mode with low memory optimization
-   npx @gv-sh/specgen-app production-low-memory
    ```
 
-5. **Keep the service running with PM2** (recommended):
+3. **Node.js Version Issues**:
    ```bash
-   sudo npm install -g pm2
-   # Use the low-memory production mode with PM2
-   pm2 start "npx @gv-sh/specgen-app production-low-memory" --name "specgen"
-   pm2 startup
-   pm2 save
+   # Ensure Node.js 20+ is installed
+   node --version  # Should be v20+
    ```
 
-6. **Access your application**:
-   - User Interface: http://your-server-ip:3002
-   - Admin Interface: http://your-server-ip:3001
-   - API: http://your-server-ip:3000
-
-### Option 2: Global NPM Package Deployment
-
-#### Local Machine Deployment
-
-1. **Install globally** (recommended for deployment):
+4. **SQLite3 Binding Errors**:
    ```bash
-   npm install -g @gv-sh/specgen-app
+   # The setup script includes engine-strict=false
+   # If issues persist, run setup again - it includes full cleanup
+   npx @gv-sh/specgen-app setup
    ```
 
-2. **Create a project directory**:
-   ```bash
-   mkdir specgen-project
-   cd specgen-project
-   ```
-
-3. **Initialize and setup**:
-   ```bash
-   specgen-app setup
-   ```
-   During setup, you'll be prompted to enter your OpenAI API key.
-
-4. **Start the application**:
-   - Development mode: `specgen-app dev`
-   - Production mode: `specgen-app production`
-
-#### Remote Server Deployment
-
-1. **SSH into your server**:
-   ```bash
-   ssh -i "your-key.pem" username@your-server
-   ```
-
-2. **Install Node.js** (if not already installed):
-   ```bash
-   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-   sudo apt-get install -y nodejs
-   ```
-
-3. **Create a project directory**:
-   ```bash
-   mkdir specgen
-   cd specgen
-   ```
-
-4. **Install SpecGen globally**:
-   ```bash
-   npm install -g @gv-sh/specgen-app
-   ```
-
-5. **Setup the application**:
-   ```bash
-   specgen-app setup
-   ```
-
-6. **Start in production mode**:
-   ```bash
-   specgen-app production
-   ```
-
-### Option 3: Manual Deployment
-
-Alternatively, you can deploy manually using the repository:
-
-#### Build and Run Locally
+### Health Check
+Test if your deployment is working:
 ```bash
-git clone https://github.com/gv-sh/specgen-app.git
-cd specgen-app
-npm run setup
-npm run build
-npm run production
+curl http://localhost:8080/api/health
+# Should return: {"status":"ok","port":8080}
 ```
 
-#### AWS Deployment Script
+## 🚨 Breaking Changes from Previous Versions
 
-1. Launch Ubuntu 22.04 instance with SSH access
-2. Run deployment script:
+- **Port Change**: Default port changed from 3000 → 8080
+- **URL Structure**: Admin at `/admin`, User at `/app`
+- **Simplified Scripts**: Single `setup` and `production` commands
+- **Automatic Cleanup**: Setup now cleans existing installations
 
-```bash
-# On AWS instance
-wget https://github.com/gv-sh/specgen-app/raw/main/scripts/deploy.sh
-chmod +x deploy.sh
-sudo ./deploy.sh
-```
+## 📚 API Documentation
 
-## Management Commands
+Once deployed, access the interactive API documentation at:
+- **Swagger UI**: http://your-server:8080/api-docs
 
-When using NPX or global installation:
-```bash
-# Check status
-npx @gv-sh/specgen-app deploy:status
-# or when installed globally
-specgen-app deploy:status
+## 🤝 Contributing
 
-# Stop services
-npx @gv-sh/specgen-app deploy:stop
-# or
-specgen-app deploy:stop
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-# Restart services
-npx @gv-sh/specgen-app deploy:restart
-# or
-specgen-app deploy:restart
+## 📄 License
 
-# Update to latest version
-npm update -g @gv-sh/specgen-app
-```
+This project is licensed under the ISC License.
 
-When using the repository:
-```bash
-# Stop services
-npm run deploy:stop
+## 🆘 Support
 
-# Restart services
-npm run deploy:restart
-
-# Update to latest
-npm run deploy:update
-
-# Check status
-npm run deploy:status
-
-# Create backup
-npm run deploy:backup
-```
-
-## Available Commands
-
-The following commands are available when using `npx @gv-sh/specgen-app` or `specgen-app` (if installed globally):
-
-- `setup` - Set up the SpecGen application
-- `setup-low-memory` - Set up the SpecGen application with memory optimizations
-- `production` - Run the application in production mode
-- `production-low-memory` - Run the application in production mode with memory optimizations
-- `dev` - Run the application in development mode
-- `deploy` - Deploy the application
-- `deploy:stop` - Stop the deployed application
-- `deploy:restart` - Restart the deployed application
-- `deploy:update` - Update the deployed application
-- `deploy:status` - Check the status of the deployed application
-- `deploy:backup` - Create a backup of the deployed application
-- `troubleshoot` - Run troubleshooting checks
-
-## Troubleshooting
-
-If you encounter issues:
-
-```bash
-# Using npx
-npx @gv-sh/specgen-app troubleshoot
-
-# Using global installation
-specgen-app troubleshoot
-
-# For repository installation
-npm run troubleshoot
-```
-
-This will check your setup and identify common problems.
-
-## Environment Variables
-
-The setup script creates necessary environment files automatically. You only need to add your OpenAI API key during setup or later to `server/.env`.
+- **Issues**: [GitHub Issues](https://github.com/gv-sh/specgen-app/issues)
+- **Documentation**: Check `/api-docs` when running
+- **Health Check**: Visit `/api/health` to verify installation

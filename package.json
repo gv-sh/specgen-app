@@ -1,6 +1,6 @@
 {
   "name": "@gv-sh/specgen-app",
-  "version": "0.6.0",
+  "version": "0.5.0",
   "description": "Complete SpecGen application with server, admin, and user interfaces",
   "main": "index.js",
   "bin": {
@@ -12,6 +12,7 @@
     "build": "cd admin && npm run build && cd ../user && npm run build",
     "start": "cd server && npm start",
     "production": "chmod +x scripts/production.sh && ./scripts/production.sh",
+    "make-executable": "chmod +x scripts/make-executable.sh && ./scripts/make-executable.sh",
     "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
     "deploy:stop": "chmod +x scripts/stop.sh && ./scripts/stop.sh",
     "deploy:restart": "chmod +x scripts/restart.sh && ./scripts/restart.sh",
