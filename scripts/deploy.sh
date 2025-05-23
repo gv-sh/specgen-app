@@ -350,6 +350,8 @@ for component in admin user; do
     fi
 done
 
+npm install --no-save serve
+
 # ========================================
 # VERIFY BUILDS
 # ========================================
@@ -401,24 +403,44 @@ else
     
     cat > "$PROJECT_DIR/ecosystem.config.js" << EOF
 module.exports = {
-  apps: [{
-    name: 'specgen',
-    script: '$PROJECT_DIR/server/index.js',
-    cwd: '$PROJECT_DIR',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 80,
-      HOST: '$BIND_HOST'
+  apps: [
+    {
+      name: 'specgen',
+      script: '$PROJECT_DIR/server/index.js',
+      cwd: '$PROJECT_DIR',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 80,
+        HOST: '$BIND_HOST'
+      },
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '500M',
+      error_file: '$PROJECT_DIR/logs/err.log',
+      out_file: '$PROJECT_DIR/logs/out.log',
+      log_file: '$PROJECT_DIR/logs/combined.log',
+      time: true,
+      watch: false
     },
-    instances: 1,
-    exec_mode: 'fork',
-    max_memory_restart: '500M',
-    error_file: '$PROJECT_DIR/logs/err.log',
-    out_file: '$PROJECT_DIR/logs/out.log',
-    log_file: '$PROJECT_DIR/logs/combined.log',
-    time: true,
-    watch: false
-  }]
+    {
+      name: 'specgen-admin',
+      script: 'npx',
+      args: 'serve -s admin/build -l 5001',
+      cwd: '$PROJECT_DIR',
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'specgen-user',
+      script: 'npx',
+      args: 'serve -s user/build -l 5002',
+      cwd: '$PROJECT_DIR',
+      env: {
+        NODE_ENV: 'production'
+      }
+    }
+  ]
 }
 EOF
     
