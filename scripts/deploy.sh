@@ -401,6 +401,17 @@ if [ "$DRY_RUN" = true ]; then
 else
     echo "🚀 Starting PM2 deployment..."
     
+    mkdir -p logs
+    cp server/.env .env 2>/dev/null || true
+
+    # Grant Node permission to bind to port 80
+    sudo setcap 'cap_net_bind_service=+ep' "$(which node)"
+
+    # Load environment variables from .env
+    set -o allexport
+    source .env
+    set +o allexport
+    
     cat > "$PROJECT_DIR/ecosystem.config.js" << EOF
 module.exports = {
   apps: [
@@ -411,7 +422,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 80,
-        HOST: '$BIND_HOST'
+        HOST: '$BIND_HOST',
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY
       },
       instances: 1,
       exec_mode: 'fork',
