@@ -45,7 +45,7 @@ rm -rf ~/.pm2/logs/* 2>/dev/null || true
 
 # 2. Kill processes on ports we'll use
 echo "Freeing up ports..."
-for port in 8080 3000 3001 3002; do
+for port in 80 3000 3001 3002; do
     if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo "Killing processes on port $port..."
         lsof -ti:$port | xargs kill -9 2>/dev/null || true
@@ -163,7 +163,7 @@ done
 
 echo "🔧 Setting up environment files..."
 
-# Server .env (default to port 8080)
+# Server .env (default to port 80)
 if [ ! -f server/.env ] || [ "$CI" = "true" ]; then
     # If in CI mode, use a dummy key
     if [ "$CI" = "true" ]; then
@@ -173,7 +173,7 @@ if [ ! -f server/.env ] || [ "$CI" = "true" ]; then
             cat > server/.env << EOF
 OPENAI_API_KEY=sk-test1234
 NODE_ENV=test
-PORT=8080
+PORT=80
 EOF
             echo "Created test .env file for CI environment"
         fi
@@ -196,7 +196,7 @@ EOF
 # OpenAI API key
 OPENAI_API_KEY=$OPENAI_KEY
 NODE_ENV=development
-PORT=8080
+PORT=80
 EOF
         
         if [ "$KEY_PROVIDED" = true ]; then
@@ -210,7 +210,7 @@ fi
 # Admin .env.development  
 if [ -d admin ]; then
     cat > admin/.env.development << 'EOF'
-REACT_APP_API_URL=http://localhost:8080
+REACT_APP_API_URL=http://localhost:80
 PORT=3001
 SKIP_PREFLIGHT_CHECK=true
 GENERATE_SOURCEMAP=false
@@ -220,7 +220,7 @@ fi
 # User .env.development
 if [ -d user ]; then
     cat > user/.env.development << 'EOF'
-REACT_APP_API_URL=http://localhost:8080
+REACT_APP_API_URL=http://localhost:80
 PORT=3002
 SKIP_PREFLIGHT_CHECK=true
 GENERATE_SOURCEMAP=false
@@ -239,25 +239,25 @@ echo "  - Nginx specgen configurations"
 echo "  - Systemd services"
 echo "  - Docker containers"
 echo "  - Old project files"
-echo "  - Freed ports: 8080, 3000, 3001, 3002"
+echo "  - Freed ports: 80, 3000, 3001, 3002"
 echo ""
 echo "Next steps:"
 if [ "$KEY_PROVIDED" = false ]; then
     echo "1. Add your OpenAI API key to server/.env"
     echo "2. Run 'npm run dev' to start all services"
-    echo "3. Or run 'npm run production' for production mode on port 8080"
+    echo "3. Or run 'npm run production' for production mode on port 80"
 else
     echo "1. Run 'npm run dev' to start all services"
-    echo "2. Or run 'npm run production' for production mode on port 8080"
+    echo "2. Or run 'npm run production' for production mode on port 80"
 fi
 echo ""
 echo "Access URLs:"
-echo "  🌐 Production: http://localhost:8080 (main app)"
-echo "  📱 Production User: http://localhost:8080/app"
-echo "  ⚙️ Production Admin: http://localhost:8080/admin"
-echo "  📚 API Docs: http://localhost:8080/api-docs"
+echo "  🌐 Production: http://localhost:80 (main app)"
+echo "  📱 Production User: http://localhost:80/app"
+echo "  ⚙️ Production Admin: http://localhost:80/admin"
+echo "  📚 API Docs: http://localhost:80/api-docs"
 echo ""
 echo "Development URLs:"
 echo "  🌐 User Interface: http://localhost:3002"
 echo "  ⚙️ Admin Interface: http://localhost:3001"  
-echo "  🔧 API: http://localhost:8080"
+echo "  🔧 API: http://localhost:80"

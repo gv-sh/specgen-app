@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# SpecGen Deploy Script - Port 8080 Production Deployment
+# SpecGen Deploy Script - Port 80 Production Deployment
 set -e
 
-echo "🚀 Deploying SpecGen to production on port 8080..."
+echo "🚀 Deploying SpecGen to production on port 80..."
 
 # Function to check if port is available
 check_port() {
@@ -20,11 +20,11 @@ echo "Stopping existing PM2 processes..."
 npx pm2 stop all 2>/dev/null || true
 npx pm2 delete all 2>/dev/null || true
 
-# Kill any processes on port 8080
-echo "Freeing port 8080..."
-if ! check_port 8080; then
-    echo "Port 8080 is in use. Attempting to free it..."
-    lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+# Kill any processes on port 80
+echo "Freeing port 80..."
+if ! check_port 80; then
+    echo "Port 80 is in use. Attempting to free it..."
+    lsof -ti:80 | xargs kill -9 2>/dev/null || true
     sleep 2
 fi
 
@@ -64,7 +64,7 @@ module.exports = {
     cwd: process.cwd(),
     env: {
       NODE_ENV: 'production',
-      PORT: 8080
+      PORT: 80
     },
     instances: 1,
     exec_mode: 'fork',
@@ -83,8 +83,8 @@ EOF
 mkdir -p logs
 
 # Start with PM2
-echo "Starting SpecGen with PM2 on port 8080..."
-NODE_ENV=production PORT=8080 npx pm2 start ecosystem.config.js
+echo "Starting SpecGen with PM2 on port 80..."
+NODE_ENV=production PORT=80 npx pm2 start ecosystem.config.js
 
 # Wait for startup
 sleep 5
@@ -93,11 +93,11 @@ echo ""
 echo "✅ SpecGen deployment completed!"
 echo ""
 echo "🌐 Access your application at:"
-echo "   - Main page: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/"
-echo "   - User app: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/app"
-echo "   - Admin panel: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/admin"
-echo "   - API docs: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/api-docs"
-echo "   - Health check: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):8080/api/health"
+echo "   - Main page: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):80/"
+echo "   - User app: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):80/app"
+echo "   - Admin panel: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):80/admin"
+echo "   - API docs: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):80/api-docs"
+echo "   - Health check: http://$(curl -s ifconfig.me 2>/dev/null || echo 'your-server'):80/api/health"
 echo ""
 echo "📊 Check status with: npx pm2 status"
 echo "📝 View logs with: npx pm2 logs specgen"

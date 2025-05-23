@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SpecGen Deploy Script - Self-Contained Deployment on Port 8080
+# SpecGen Deploy Script - Self-Contained Deployment on Port 80
 set -e
 
 # Check for dry-run mode
@@ -10,7 +10,7 @@ if [ "$1" = "--dry-run" ] || [ "$1" = "-d" ]; then
     echo "🧪 DRY RUN MODE - Testing deployment locally"
     echo "🖥️  Platform: $(uname -s) $(uname -m)"
 else
-    echo "🚀 Deploying SpecGen to production on port 8080..."
+    echo "🚀 Deploying SpecGen to production on port 80..."
     echo "📦 This is a complete deployment - no separate setup needed!"
 fi
 
@@ -66,7 +66,7 @@ if [ "$DRY_RUN" = false ]; then
     rm -f ecosystem.config.js 2>/dev/null || true
     
     # Kill processes on all relevant ports
-    for port in 8080 3000 3001 3002; do
+    for port in 80 3000 3001 3002; do
         if ! check_port $port; then
             echo "Killing processes on port $port..."
             lsof -ti:$port | xargs kill -9 2>/dev/null || true
@@ -117,7 +117,7 @@ if [ "$DRY_RUN" = true ]; then
     mkdir -p "$PROJECT_DIR/server"
     echo "OPENAI_API_KEY=sk-test1234567890abcdef" > "$PROJECT_DIR/server/.env"
     echo "NODE_ENV=production" >> "$PROJECT_DIR/server/.env"
-    echo "PORT=8080" >> "$PROJECT_DIR/server/.env"
+    echo "PORT=80" >> "$PROJECT_DIR/server/.env"
     echo "HOST=$BIND_HOST" >> "$PROJECT_DIR/server/.env"
 elif [ ! -f "$PROJECT_DIR/server/.env" ] || grep -q "your_openai_api_key_here" "$PROJECT_DIR/server/.env" 2>/dev/null; then
     if [ "$CI" = "true" ]; then
@@ -125,7 +125,7 @@ elif [ ! -f "$PROJECT_DIR/server/.env" ] || grep -q "your_openai_api_key_here" "
         mkdir -p "$PROJECT_DIR/server"
         echo "OPENAI_API_KEY=sk-test1234" > "$PROJECT_DIR/server/.env"
         echo "NODE_ENV=production" >> "$PROJECT_DIR/server/.env"
-        echo "PORT=8080" >> "$PROJECT_DIR/server/.env"
+        echo "PORT=80" >> "$PROJECT_DIR/server/.env"
         echo "HOST=$BIND_HOST" >> "$PROJECT_DIR/server/.env"
     else
         echo "⚠️ OpenAI API key required for SpecGen to work."
@@ -140,7 +140,7 @@ elif [ ! -f "$PROJECT_DIR/server/.env" ] || grep -q "your_openai_api_key_here" "
         mkdir -p "$PROJECT_DIR/server"
         echo "OPENAI_API_KEY=$OPENAI_KEY" > "$PROJECT_DIR/server/.env"
         echo "NODE_ENV=production" >> "$PROJECT_DIR/server/.env"
-        echo "PORT=8080" >> "$PROJECT_DIR/server/.env"
+        echo "PORT=80" >> "$PROJECT_DIR/server/.env"
         echo "HOST=$BIND_HOST" >> "$PROJECT_DIR/server/.env"
         echo "✅ API key saved"
     fi
@@ -178,7 +178,7 @@ if [ ! -f "server/index.js" ]; then
     # Install unified server that binds to 0.0.0.0
     echo "   🔧 Installing unified server (binds to all interfaces)..."
     cat > server/index.js << 'EOF'
-// index.js - Unified server for port 8080 with public binding
+// index.js - Unified server for port 80 with public binding
 /* global process */
 require('dotenv').config();
 const express = require('express');
@@ -188,7 +188,7 @@ const errorHandler = require('./middleware/errorHandler');
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 80;
 const HOST = process.env.HOST || '0.0.0.0';  // Bind to all interfaces by default
 
 // Middleware
@@ -371,7 +371,7 @@ if [ "$DRY_RUN" = true ]; then
     cd "$PROJECT_DIR"
     cp server/.env .env 2>/dev/null || true
     
-    TEST_PORT=8080
+    TEST_PORT=80
     if ! check_port $TEST_PORT; then
         TEST_PORT=8081
     fi
@@ -407,7 +407,7 @@ module.exports = {
     cwd: '$PROJECT_DIR',
     env: {
       NODE_ENV: 'production',
-      PORT: 8080,
+      PORT: 80,
       HOST: '$BIND_HOST'
     },
     instances: 1,
@@ -425,12 +425,12 @@ EOF
     mkdir -p logs
     cp server/.env .env 2>/dev/null || true
     
-    if ! check_port 8080; then
-        lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+    if ! check_port 80; then
+        lsof -ti:80 | xargs kill -9 2>/dev/null || true
         sleep 2
     fi
     
-    NODE_ENV=production PORT=8080 HOST=$BIND_HOST $PM2_CMD start ecosystem.config.js
+    NODE_ENV=production PORT=80 HOST=$BIND_HOST $PM2_CMD start ecosystem.config.js
     
     sleep 5
     
@@ -441,9 +441,9 @@ EOF
         echo "🎉 SpecGen deployment completed!"
         echo ""
         echo "🌐 Access your application at:"
-        echo "   - Main page: http://$PUBLIC_IP:8080/"
-        echo "   - User app: http://$PUBLIC_IP:8080/app/"
-        echo "   - Admin panel: http://$PUBLIC_IP:8080/admin/"
+        echo "   - Main page: http://$PUBLIC_IP:80/"
+        echo "   - User app: http://$PUBLIC_IP:80/app/"
+        echo "   - Admin panel: http://$PUBLIC_IP:80/admin/"
         echo ""
         echo "🔧 Binding: Server is bound to $BIND_HOST (${BIND_HOST:+publicly accessible})"
         echo "📊 Management: npx pm2 status | npx pm2 logs specgen"

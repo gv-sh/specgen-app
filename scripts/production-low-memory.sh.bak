@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# SpecGen Production Script - Port 8080 Low Memory Version
+# SpecGen Production Script - Port 80 Low Memory Version
 set -e
 
-echo "🚀 Starting SpecGen in production mode on port 8080 (Low Memory)..."
+echo "🚀 Starting SpecGen in production mode on port 80 (Low Memory)..."
 
 # Function to check if port is available
 check_port() {
@@ -94,13 +94,13 @@ if [ ! -d "admin/build" ] || [ ! -d "user/build" ]; then
     fi
 fi
 
-# Update server .env to use port 8080
+# Update server .env to use port 80
 if [ -f "server/.env" ]; then
-    # Update or add PORT=8080 to .env
+    # Update or add PORT=80 to .env
     if grep -q "^PORT=" server/.env; then
-        sed -i.bak "s/^PORT=.*/PORT=8080/" server/.env
+        sed -i.bak "s/^PORT=.*/PORT=80/" server/.env
     else
-        echo "PORT=8080" >> server/.env
+        echo "PORT=80" >> server/.env
     fi
     rm -f server/.env.bak
 fi
@@ -109,21 +109,21 @@ fi
 cat > server/.env.production << EOF
 $(cat server/.env)
 NODE_ENV=production
-PORT=8080
+PORT=80
 EOF
 
-# Kill existing processes on port 8080 if needed
-echo "Checking port 8080..."
-if ! check_port 8080; then
-    echo "Port 8080 is in use. Attempting to free it..."
-    lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+# Kill existing processes on port 80 if needed
+echo "Checking port 80..."
+if ! check_port 80; then
+    echo "Port 80 is in use. Attempting to free it..."
+    lsof -ti:80 | xargs kill -9 2>/dev/null || true
     sleep 2
 fi
 
 # Start production server
-echo "Starting production server on port 8080..."
+echo "Starting production server on port 80..."
 if [ "$CI" = "true" ]; then
     echo "CI mode detected - skipping server start"
 else
-    cd server && NODE_ENV=production PORT=8080 npm start
+    cd server && NODE_ENV=production PORT=80 npm start
 fi

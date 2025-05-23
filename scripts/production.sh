@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# SpecGen Production Script - Low Memory, Port 8080 with Cleanup
+# SpecGen Production Script - Low Memory, Port 80 with Cleanup
 set -e
 
-echo "🚀 Starting SpecGen in production mode on port 8080..."
+echo "🚀 Starting SpecGen in production mode on port 80..."
 echo "🧹 Cleaning up existing processes..."
 
 # Function to check if port is available
@@ -27,7 +27,7 @@ npx pm2 delete all 2>/dev/null || true
 
 # Kill processes on ports we'll use
 echo "Freeing ports..."
-for port in 8080 3000 3001 3002; do
+for port in 80 3000 3001 3002; do
     if ! check_port $port; then
         echo "Port $port is in use. Attempting to free it..."
         lsof -ti:$port | xargs kill -9 2>/dev/null || true
@@ -38,8 +38,8 @@ done
 # Stop nginx if it might interfere
 if command -v nginx &> /dev/null && systemctl is-active --quiet nginx 2>/dev/null; then
     echo "Nginx is running, checking for conflicts..."
-    if nginx -T 2>/dev/null | grep -q ":8080"; then
-        echo "⚠️ Nginx is configured to use port 8080. You may need to reconfigure nginx."
+    if nginx -T 2>/dev/null | grep -q ":80"; then
+        echo "⚠️ Nginx is configured to use port 80. You may need to reconfigure nginx."
     fi
 fi
 
@@ -138,13 +138,13 @@ fi
 # CONFIGURE ENVIRONMENT
 # ========================================
 
-# Update server .env to use port 8080
+# Update server .env to use port 80
 if [ -f "server/.env" ]; then
-    # Update or add PORT=8080 to .env
+    # Update or add PORT=80 to .env
     if grep -q "^PORT=" server/.env; then
-        sed -i.bak "s/^PORT=.*/PORT=8080/" server/.env
+        sed -i.bak "s/^PORT=.*/PORT=80/" server/.env
     else
-        echo "PORT=8080" >> server/.env
+        echo "PORT=80" >> server/.env
     fi
     rm -f server/.env.bak
 fi
@@ -153,7 +153,7 @@ fi
 cat > server/.env.production << EOF
 $(cat server/.env)
 NODE_ENV=production
-PORT=8080
+PORT=80
 EOF
 
 # Create logs directory
@@ -164,17 +164,17 @@ mkdir -p logs
 # ========================================
 
 # Final port check
-echo "Final check for port 8080..."
-if ! check_port 8080; then
-    echo "Port 8080 is still in use after cleanup. Force killing..."
-    lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+echo "Final check for port 80..."
+if ! check_port 80; then
+    echo "Port 80 is still in use after cleanup. Force killing..."
+    lsof -ti:80 | xargs kill -9 2>/dev/null || true
     sleep 2
 fi
 
 # Start production server
-echo "Starting production server on port 8080..."
+echo "Starting production server on port 80..."
 if [ "$CI" = "true" ]; then
     echo "CI mode detected - skipping server start"
 else
-    cd server && NODE_ENV=production PORT=8080 npm start
+    cd server && NODE_ENV=production PORT=80 npm start
 fi
