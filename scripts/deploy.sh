@@ -37,15 +37,61 @@ PLATFORM=$(uname -s)
 if [ "$PLATFORM" = "Darwin" ]; then
     echo "🍎 Detected macOS"
     PM2_CMD="npx pm2"
-    BIND_HOST="127.0.0.1"  # macOS - bind to localhost for testing
+    DEFAULT_BIND_HOST="127.0.0.1"  # macOS - default to localhost
 elif [ "$PLATFORM" = "Linux" ]; then
     echo "🐧 Detected Linux"
     PM2_CMD="npx pm2"
-    BIND_HOST="0.0.0.0"    # Linux - bind to all interfaces for public access
+    DEFAULT_BIND_HOST="0.0.0.0"    # Linux - default to public access
 else
     echo "⚠️  Unknown platform: $PLATFORM"
     PM2_CMD="npx pm2"
-    BIND_HOST="0.0.0.0"
+    DEFAULT_BIND_HOST="0.0.0.0"
+fi
+
+# Let user choose host binding unless in dry-run mode
+if [ "$DRY_RUN" = true ]; then
+    BIND_HOST="$DEFAULT_BIND_HOST"
+    echo "🧪 DRY RUN: Using default host binding ($BIND_HOST)"
+else
+    echo ""
+    echo "🌐 Choose server binding option:"
+    echo "   1) 0.0.0.0 - Public access (accessible from any IP)"
+    echo "   2) 127.0.0.1 - Local only (localhost access only)"
+    echo "   3) Custom IP address"
+    echo ""
+    echo "Default for $PLATFORM: $DEFAULT_BIND_HOST"
+    echo -n "Enter choice (1-3) or press Enter for default: "
+    read -r HOST_CHOICE
+    
+    case "$HOST_CHOICE" in
+        1)
+            BIND_HOST="0.0.0.0"
+            echo "✅ Selected: Public access (0.0.0.0)"
+            ;;
+        2)
+            BIND_HOST="127.0.0.1"
+            echo "✅ Selected: Local only (127.0.0.1)"
+            ;;
+        3)
+            echo -n "Enter custom IP address: "
+            read -r CUSTOM_HOST
+            if [ -n "$CUSTOM_HOST" ]; then
+                BIND_HOST="$CUSTOM_HOST"
+                echo "✅ Selected: Custom host ($BIND_HOST)"
+            else
+                BIND_HOST="$DEFAULT_BIND_HOST"
+                echo "✅ Using default: $BIND_HOST"
+            fi
+            ;;
+        "")
+            BIND_HOST="$DEFAULT_BIND_HOST"
+            echo "✅ Using default: $BIND_HOST"
+            ;;
+        *)
+            echo "⚠️  Invalid choice, using default: $DEFAULT_BIND_HOST"
+            BIND_HOST="$DEFAULT_BIND_HOST"
+            ;;
+    esac
 fi
 
 echo "🌐 Server will bind to: $BIND_HOST"
@@ -350,9 +396,9 @@ for component in admin user; do
     fi
 done
 
-npm install --no-save serve
+# No need to install serve - using unified server only
 
-# ========================================
+# ====================== ==================
 # VERIFY BUILDS
 # ========================================
 
@@ -404,8 +450,13 @@ else
     mkdir -p logs
     cp server/.env .env 2>/dev/null || true
 
-    # Grant Node permission to bind to port 80
-    sudo setcap 'cap_net_bind_service=+ep' "$(which node)"
+    # Grant Node permission to bind to port 80 (Linux only)
+    if [ "$PLATFORM" = "Linux" ]; then
+        echo "🔐 Granting Node.js permission to bind to port 80..."
+        sudo setcap 'cap_net_bind_service=+ep' "$(which node)" 2>/dev/null || {
+            echo "⚠️  Could not set capabilities. You may need to run as root or use a port > 1024"
+        }
+    fi
 
     # Load environment variables from .env
     set -o allexport
@@ -433,24 +484,6 @@ module.exports = {
       log_file: '$PROJECT_DIR/logs/combined.log',
       time: true,
       watch: false
-    },
-    {
-      name: 'specgen-admin',
-      script: 'npx',
-      args: 'serve -s admin/build -l 5001',
-      cwd: '$PROJECT_DIR',
-      env: {
-        NODE_ENV: 'production'
-      }
-    },
-    {
-      name: 'specgen-user',
-      script: 'npx',
-      args: 'serve -s user/build -l 5002',
-      cwd: '$PROJECT_DIR',
-      env: {
-        NODE_ENV: 'production'
-      }
     }
   ]
 }
@@ -466,25 +499,60 @@ EOF
     
     NODE_ENV=production PORT=80 HOST=$BIND_HOST $PM2_CMD start ecosystem.config.js
     
-    sleep 5
+    echo "⏱️  Waiting for server to start..."
+    sleep 8
     
-    if $PM2_CMD list | grep -q "online"; then
+    # Verify the server is actually responding
+    echo "🔍 Verifying server health..."
+    HEALTH_CHECK=false
+    for i in {1..10}; do
+        if curl -s http://localhost:80/api/health >/dev/null 2>&1; then
+            HEALTH_CHECK=true
+            break
+        fi
+        echo "   Attempt $i/10: Server not ready yet..."
+        sleep 2
+    done
+    
+    if $PM2_CMD list | grep -q "online" && [ "$HEALTH_CHECK" = true ]; then
         PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null || echo 'your-server')
         
         echo ""
         echo "🎉 SpecGen deployment completed!"
         echo ""
         echo "🌐 Access your application at:"
-        echo "   - Main page: http://$PUBLIC_IP:80/"
-        echo "   - User app: http://$PUBLIC_IP:80/app/"
-        echo "   - Admin panel: http://$PUBLIC_IP:80/admin/"
+        if [ "$BIND_HOST" = "0.0.0.0" ]; then
+            echo "   - Main page: http://$PUBLIC_IP/"
+            echo "   - User app: http://$PUBLIC_IP/app"
+            echo "   - Admin panel: http://$PUBLIC_IP/admin"
+            echo "   - API docs: http://$PUBLIC_IP/api-docs"
+            echo "   - Health check: http://$PUBLIC_IP/api/health"
+        else
+            echo "   - Main page: http://localhost/"
+            echo "   - User app: http://localhost/app"
+            echo "   - Admin panel: http://localhost/admin"
+            echo "   - API docs: http://localhost/api-docs"
+            echo "   - Health check: http://localhost/api/health"
+        fi
         echo ""
-        echo "🔧 Binding: Server is bound to $BIND_HOST (${BIND_HOST:+publicly accessible})"
+        echo "🔧 Binding: Server is bound to $BIND_HOST"
         echo "📊 Management: npx pm2 status | npx pm2 logs specgen"
+        echo ""
+        echo "✅ All services are running and responding!"
         
     else
+        echo ""
         echo "❌ Deployment failed!"
-        $PM2_CMD logs specgen --lines 10
+        echo "🔍 Process status:"
+        $PM2_CMD list
+        echo ""
+        echo "📝 Recent logs:"
+        $PM2_CMD logs specgen --lines 20
+        echo ""
+        echo "🔧 Debug commands:"
+        echo "   npx pm2 logs specgen"
+        echo "   npx pm2 restart specgen"
+        echo "   curl http://localhost:80/api/health"
         exit 1
     fi
 fi
