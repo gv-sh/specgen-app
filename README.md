@@ -1,6 +1,6 @@
 # SpecGen App - Complete Platform
 
-[![Version](https://img.shields.io/badge/version-0.13.2-blue.svg)](https://github.com/gv-sh/specgen-app)
+[![Version](https://img.shields.io/badge/version-0.13.3-blue.svg)](https://github.com/gv-sh/specgen-app)
 
 A unified deployment package for the SpecGen speculative fiction generator platform. **Optimized for port 80 deployment with low memory usage.**
 
