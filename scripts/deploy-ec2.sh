@@ -46,14 +46,15 @@ echo "📦 Setting up dependencies..."
 run_on_ec2 "
     cd '$APP_DIR'
     npm run setup
-    
-    # Install cross-env globally for build process
-    npm install -g cross-env
 "
 
 echo "🏗️ Building applications..."
 run_on_ec2 "
     cd '$APP_DIR'
+    
+    # Install devDependencies for user interface (needed for UI components)
+    echo 'Installing user interface build dependencies...'
+    cd user && npm install --include=dev && cd ..
     
     # Build admin interface with correct public URL
     echo 'Building admin interface...'
@@ -61,9 +62,15 @@ run_on_ec2 "
     
     # Build user interface with production API URL  
     echo 'Building user interface...'
-    cd user && cross-env REACT_APP_API_URL=/api npm run build && cd ..
+    cd user && npx cross-env REACT_APP_API_URL=/api npm run build && cd ..
     
-    echo '✅ Builds completed'
+    # Copy builds to server directory where Express expects them
+    echo 'Copying builds to server directory...'
+    mkdir -p server/admin server/user
+    cp -r admin/build server/admin/
+    cp -r user/build server/user/
+    
+    echo '✅ Builds completed and copied to server'
 "
 
 echo "🔧 Configuring environment..."
