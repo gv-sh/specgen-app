@@ -41,11 +41,16 @@ jobs:
       
       - name: Test setup and production process
         run: |
+          # Clean any existing files that might conflict
+          rm -rf server admin user 2>/dev/null || true
+          
           # Run normal setup with the environment variable to indicate CI mode
           CI=true npm run setup
           
           # Create a CI-specific .env file with a dummy API key after setup
-          echo "OPENAI_API_KEY=sk-test1234\nNODE_ENV=test\nPORT=3000" > server/.env
+          echo "OPENAI_API_KEY=sk-test1234" > server/.env
+          echo "NODE_ENV=test" >> server/.env
+          echo "PORT=3000" >> server/.env
           
           # Make scripts executable
           npm run make-executable
