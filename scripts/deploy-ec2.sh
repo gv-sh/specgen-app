@@ -61,19 +61,35 @@ run_on_ec2 "
 "
 
 echo "🔧 Configuring environment..."
+
+# Get OpenAI API key from local server .env file
+OPENAI_KEY=""
+if [ -f "../specgen-server/.env" ]; then
+    OPENAI_KEY=$(grep "OPENAI_API_KEY=" ../specgen-server/.env | cut -d'=' -f2)
+    echo "✅ Found OpenAI API key in local specgen-server/.env"
+elif [ -f "server/.env" ]; then
+    OPENAI_KEY=$(grep "OPENAI_API_KEY=" server/.env | cut -d'=' -f2)
+    echo "✅ Found OpenAI API key in local server/.env"
+else
+    echo "⚠️  No OpenAI API key found, using test key"
+    OPENAI_KEY="sk-test1234"
+fi
+
 run_on_ec2 "
     cd '$APP_DIR'
     
     # Create logs directory
     mkdir -p logs
     
-    # Set up server environment
-    cat > server/.env << 'EOF'
+    # Set up server environment with real API key
+    cat > server/.env << EOF
 NODE_ENV=production
 PORT=80
 HOST=0.0.0.0
-OPENAI_API_KEY=\${OPENAI_API_KEY:-sk-test1234}
+OPENAI_API_KEY=$OPENAI_KEY
 EOF
+    
+    echo 'Environment configured with OpenAI API key'
 "
 
 echo "🚀 Starting application..."
