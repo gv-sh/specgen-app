@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SpecGen EC2 Deployment Script
+# SpecGen EC2 Remote Deployment Script
 # Run from your Mac to deploy to EC2
 
 set -e
@@ -11,7 +11,7 @@ EC2_KEY="debanshu.pem"
 REPO_URL="https://github.com/gv-sh/specgen-app.git"
 APP_DIR="/home/ubuntu/specgen-app"
 
-echo "🚀 SpecGen EC2 Deployment Starting..."
+echo "🚀 SpecGen EC2 Remote Deployment Starting..."
 echo "📡 Target: $EC2_HOST"
 
 # Check if key file exists
@@ -28,6 +28,7 @@ run_on_ec2() {
 
 echo "🧹 Stopping existing services..."
 run_on_ec2 "
+    cd '$APP_DIR' 2>/dev/null || true
     npx pm2 stop specgen 2>/dev/null || true
     npx pm2 delete specgen 2>/dev/null || true
 "
@@ -51,10 +52,12 @@ echo "🏗️ Building applications..."
 run_on_ec2 "
     cd '$APP_DIR'
     
-    # Build admin with correct public URL
+    # Build admin interface with correct public URL
+    echo 'Building admin interface...'
     cd admin && PUBLIC_URL=/admin npm run build && cd ..
     
-    # Build user with production API URL
+    # Build user interface with production API URL  
+    echo 'Building user interface...'
     cd user && npm run build && cd ..
     
     echo '✅ Builds completed'
@@ -62,16 +65,16 @@ run_on_ec2 "
 
 echo "🔧 Configuring environment..."
 
-# Get OpenAI API key from local server .env file
+# Get OpenAI API key from local environment
 OPENAI_KEY=""
 if [ -f "../specgen-server/.env" ]; then
-    OPENAI_KEY=$(grep "OPENAI_API_KEY=" ../specgen-server/.env | cut -d'=' -f2)
+    OPENAI_KEY=$(grep "OPENAI_API_KEY=" ../specgen-server/.env | cut -d'=' -f2- | tr -d '"'"'"'')
     echo "✅ Found OpenAI API key in local specgen-server/.env"
 elif [ -f "server/.env" ]; then
-    OPENAI_KEY=$(grep "OPENAI_API_KEY=" server/.env | cut -d'=' -f2)
+    OPENAI_KEY=$(grep "OPENAI_API_KEY=" server/.env | cut -d'=' -f2- | tr -d '"'"'"'')
     echo "✅ Found OpenAI API key in local server/.env"
 else
-    echo "⚠️  No OpenAI API key found, using test key"
+    echo "⚠️  No OpenAI API key found locally, will use test key"
     OPENAI_KEY="sk-test1234"
 fi
 
@@ -81,13 +84,15 @@ run_on_ec2 "
     # Create logs directory
     mkdir -p logs
     
-    # Set up server environment with real API key
-    cat > server/.env << EOF
+    # Configure server environment
+    cat > server/.env << 'EOF'
 NODE_ENV=production
 PORT=80
 HOST=0.0.0.0
-OPENAI_API_KEY=$OPENAI_KEY
 EOF
+    
+    # Add OpenAI key securely
+    echo 'OPENAI_API_KEY=$OPENAI_KEY' >> server/.env
     
     echo 'Environment configured with OpenAI API key'
 "
