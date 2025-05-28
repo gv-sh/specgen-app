@@ -1,6 +1,6 @@
 {
   "name": "@gv-sh/specgen-app",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Complete SpecGen application with server, admin, and user interfaces",
   "main": "index.js",
   "bin": {
@@ -12,15 +12,12 @@
     "build": "cd admin && npm run build && cd ../user && npm run build",
     "start": "cd server && npm start",
     "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
-    "deploy:dry-run": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh --dry-run",
-    "test:deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh --dry-run",
-    "make-executable": "chmod +x scripts/make-executable.sh && ./scripts/make-executable.sh",
     "postinstall": "chmod +x bin/cli.js"
   },
   "dependencies": {
-    "@gv-sh/specgen-server": "0.9.0",
-    "@gv-sh/specgen-admin": "0.9.0",
-    "@gv-sh/specgen-user": "0.9.0"
+    "@gv-sh/specgen-server": "0.10.0",
+    "@gv-sh/specgen-admin": "0.10.0",
+    "@gv-sh/specgen-user": "0.10.0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
