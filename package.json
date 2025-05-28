@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@gv-sh/specgen-server": "0.10.1",
-    "@gv-sh/specgen-admin": "0.10.1",
+    "@gv-sh/specgen-admin": "0.10.0",
     "@gv-sh/specgen-user": "0.10.1"
   },
   "devDependencies": {
