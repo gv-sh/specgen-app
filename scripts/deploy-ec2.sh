@@ -47,8 +47,8 @@ run_on_ec2 "
     cd '$APP_DIR'
     npm run setup
     
-    # Install cross-env in user directory
-    cd user && npm install cross-env --save-dev && cd ..
+    # Install cross-env globally for build process
+    npm install -g cross-env
 "
 
 echo "🏗️ Building applications..."
@@ -103,7 +103,13 @@ EOF
 echo "🚀 Starting application..."
 run_on_ec2 "
     cd '$APP_DIR/server'
-    npx pm2 start ecosystem.config.js
+    
+    # Check if ecosystem.config.js exists in deploy directory, if not use index.js
+    if [ -f deploy/ecosystem.config.js ]; then
+        npx pm2 start deploy/ecosystem.config.js
+    else
+        npx pm2 start index.js --name specgen
+    fi
 "
 
 echo "⏳ Waiting for startup..."
