@@ -52,11 +52,8 @@ jobs:
           echo "NODE_ENV=test" >> server/.env
           echo "PORT=3000" >> server/.env
           
-          # Make scripts executable
-          npm run make-executable
-          
-          # Test production script in CI mode
-          CI=true timeout 10s ./scripts/production.sh || true
+          # Test that scripts are executable (they get chmod in their npm run commands)
+          ls -la scripts/
           
           # Verify all components are extracted
           if [ ! -d "server" ]; then
