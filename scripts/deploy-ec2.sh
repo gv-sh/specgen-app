@@ -36,7 +36,7 @@ run_on_ec2 "
 echo "📥 Updating repository..."
 run_on_ec2 "
     if [ -d '$APP_DIR' ]; then
-        cd '$APP_DIR' && git pull origin main
+        cd '$APP_DIR' && git stash && git pull origin main
     else
         git clone '$REPO_URL' '$APP_DIR'
     fi
