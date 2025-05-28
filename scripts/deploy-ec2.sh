@@ -28,7 +28,7 @@ run_on_ec2() {
 
 echo "🧹 Stopping existing services..."
 run_on_ec2 "
-    cd '$APP_DIR' 2>/dev/null || true
+    cd '$APP_DIR/server' 2>/dev/null || true
     npx pm2 stop specgen 2>/dev/null || true
     npx pm2 delete specgen 2>/dev/null || true
 "
@@ -46,6 +46,9 @@ echo "📦 Setting up dependencies..."
 run_on_ec2 "
     cd '$APP_DIR'
     npm run setup
+    
+    # Install cross-env in user directory
+    cd user && npm install cross-env --save-dev && cd ..
 "
 
 echo "🏗️ Building applications..."
@@ -58,7 +61,7 @@ run_on_ec2 "
     
     # Build user interface with production API URL  
     echo 'Building user interface...'
-    cd user && npm run build && cd ..
+    cd user && cross-env REACT_APP_API_URL=/api npm run build && cd ..
     
     echo '✅ Builds completed'
 "
@@ -99,7 +102,7 @@ EOF
 
 echo "🚀 Starting application..."
 run_on_ec2 "
-    cd '$APP_DIR'
+    cd '$APP_DIR/server'
     npx pm2 start ecosystem.config.js
 "
 
@@ -119,11 +122,11 @@ if [ "$HEALTH_CHECK" = "healthy" ]; then
     echo "  Health Check: http://52.66.251.12/api/health"
     echo ""
     echo "📊 Server status:"
-    run_on_ec2 "npx pm2 status"
+    run_on_ec2 "cd '$APP_DIR/server' && npx pm2 status"
 else
     echo "❌ Deployment failed - health check returned: $HEALTH_CHECK"
     echo "📋 Checking logs..."
-    run_on_ec2 "npx pm2 logs specgen --lines 10"
+    run_on_ec2 "cd '$APP_DIR/server' && npx pm2 logs specgen --lines 10"
     exit 1
 fi
 
