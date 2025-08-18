@@ -1,6 +1,6 @@
 {
   "name": "@gv-sh/specgen-app",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "Complete SpecGen application with server, admin, and user interfaces",
   "main": "index.js",
   "bin": {
