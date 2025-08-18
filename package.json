@@ -18,7 +18,7 @@
   "dependencies": {
     "@gv-sh/specgen-server": "0.11.1",
     "@gv-sh/specgen-admin": "0.11.0",
-    "@gv-sh/specgen-user": "0.14.4"
+    "@gv-sh/specgen-user": "0.14.5"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
