@@ -13,12 +13,14 @@
     "start": "cd server && npm start",
     "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
     "deploy:ec2": "chmod +x scripts/deploy-ec2.sh && ./scripts/deploy-ec2.sh",
+    "backup:database": "chmod +x scripts/backup-database.sh && ./scripts/backup-database.sh",
+    "restore:database": "chmod +x scripts/restore-database.sh && ./scripts/restore-database.sh",
     "postinstall": "chmod +x bin/cli.js"
   },
   "dependencies": {
     "@gv-sh/specgen-server": "0.11.1",
     "@gv-sh/specgen-admin": "0.11.0",
-    "@gv-sh/specgen-user": "0.14.5"
+    "@gv-sh/specgen-user": "0.14.9"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
