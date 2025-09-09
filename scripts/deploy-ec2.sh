@@ -182,7 +182,7 @@ NGINXEOF
     # Obtain SSL certificate
     echo 'Setting up SSL certificate...'
     if [ ! -f /etc/letsencrypt/live/futuresofhope.org/fullchain.pem ]; then
-        echo 'Obtaining SSL certificate from Let\\'s Encrypt...'
+        echo 'Obtaining SSL certificate from Let'\''s Encrypt...'
         sudo certbot --nginx -d futuresofhope.org -d www.futuresofhope.org --non-interactive --agree-tos --email admin@futuresofhope.org --redirect
         echo 'SSL certificate obtained and nginx configured for HTTPS'
     else
