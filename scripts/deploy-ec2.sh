@@ -66,7 +66,7 @@ run_on_ec2 "
     
     # Build admin interface with correct public URL (admin appends /api to base URL)
     echo 'Building admin interface...'
-    cd admin && PUBLIC_URL=/admin REACT_APP_API_URL='http://$PUBLIC_IP' npm run build && cd ..
+    cd admin && PUBLIC_URL=/admin REACT_APP_API_URL='https://futuresofhope.org' npm run build && cd ..
     
     # Build user interface with production API URL (user interface appends /api to base URL)
     echo 'Building user interface...'
@@ -74,7 +74,7 @@ run_on_ec2 "
     # Install devDependencies including cross-env
     npm install --include=dev
     # Temporarily modify package.json to use correct base URL for production
-    sed -i 's|\"build\": \"cross-env REACT_APP_API_URL=/api react-scripts build\"|\"build\": \"cross-env REACT_APP_API_URL=http://$PUBLIC_IP react-scripts build\"|' package.json
+    sed -i 's|\"build\": \"cross-env REACT_APP_API_URL=/api react-scripts build\"|\"build\": \"cross-env REACT_APP_API_URL=https://futuresofhope.org react-scripts build\"|' package.json
     npm run build
     # Restore original package.json
     git checkout package.json 2>/dev/null || true
@@ -113,7 +113,7 @@ run_on_ec2 "
     # Configure server environment
     cat > server/.env << 'EOF'
 NODE_ENV=production
-PORT=80
+PORT=8088
 HOST=0.0.0.0
 EOF
     
@@ -121,6 +121,79 @@ EOF
     echo 'OPENAI_API_KEY=$OPENAI_KEY' >> server/.env
     
     echo 'Environment configured with OpenAI API key'
+"
+
+echo "🌐 Setting up nginx and SSL..."
+run_on_ec2 "
+    # Install nginx and certbot if not present
+    if ! command -v nginx &> /dev/null; then
+        echo 'Installing nginx and certbot...'
+        sudo apt update
+        sudo apt install -y nginx certbot python3-certbot-nginx
+    fi
+    
+    # Create initial nginx configuration for futuresofhope.org (HTTP only for certbot)
+    NGINX_CONF='/etc/nginx/sites-available/futuresofhope.org'
+    if [ ! -f \"\$NGINX_CONF\" ]; then
+        echo 'Creating initial nginx configuration...'
+        sudo tee \"\$NGINX_CONF\" > /dev/null << 'NGINXEOF'
+# Nginx configuration for futuresofhope.org
+server {
+    listen 80;
+    server_name futuresofhope.org www.futuresofhope.org;
+    
+    # Let's Encrypt challenge location
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+    
+    location / {
+        proxy_buffers 16 4k;
+        proxy_buffer_size 2k;
+        proxy_pass http://127.0.0.1:8088;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+NGINXEOF
+        
+        # Enable the site
+        sudo ln -sf \"\$NGINX_CONF\" /etc/nginx/sites-enabled/
+        
+        # Remove default site
+        sudo rm -f /etc/nginx/sites-enabled/default
+        
+        # Create web root for certbot
+        sudo mkdir -p /var/www/html
+        
+        # Test and reload nginx
+        sudo nginx -t && sudo systemctl enable nginx && sudo systemctl reload nginx
+        echo 'Initial nginx configuration created'
+    else
+        echo 'Nginx configuration already exists'
+    fi
+    
+    # Obtain SSL certificate
+    echo 'Setting up SSL certificate...'
+    if [ ! -f /etc/letsencrypt/live/futuresofhope.org/fullchain.pem ]; then
+        echo 'Obtaining SSL certificate from Let\\'s Encrypt...'
+        sudo certbot --nginx -d futuresofhope.org -d www.futuresofhope.org --non-interactive --agree-tos --email admin@futuresofhope.org --redirect
+        echo 'SSL certificate obtained and nginx configured for HTTPS'
+    else
+        echo 'SSL certificate already exists'
+    fi
+    
+    # Setup auto-renewal
+    echo 'Setting up SSL certificate auto-renewal...'
+    (sudo crontab -l 2>/dev/null || true; echo '0 12 * * * /usr/bin/certbot renew --quiet') | sudo crontab -
+    
+    echo 'SSL setup completed'
 "
 
 echo "🚀 Starting application..."
@@ -139,16 +212,21 @@ echo "⏳ Waiting for startup..."
 sleep 5
 
 echo "🧪 Testing deployment..."
-HEALTH_CHECK=$(run_on_ec2 "curl -s http://localhost:80/api/health | jq -r '.status' 2>/dev/null || echo 'failed'")
+HEALTH_CHECK=$(run_on_ec2 "curl -s http://localhost:8088/api/health | jq -r '.status' 2>/dev/null || echo 'failed'")
 
 if [ "$HEALTH_CHECK" = "healthy" ]; then
     echo "✅ Deployment successful!"
     echo ""
     echo "🌐 Access your application:"
-    echo "  User Interface: http://$PUBLIC_IP/"
-    echo "  Admin Panel: http://$PUBLIC_IP/admin"
-    echo "  API Documentation: http://$PUBLIC_IP/api-docs"
-    echo "  Health Check: http://$PUBLIC_IP/api/health"
+    echo "  User Interface: https://futuresofhope.org/"
+    echo "  Admin Panel: https://futuresofhope.org/admin"
+    echo "  API Documentation: https://futuresofhope.org/api-docs"
+    echo "  Health Check: https://futuresofhope.org/api/health"
+    echo ""
+    echo "🔒 SSL Certificate:"
+    echo "  - HTTPS enabled and configured"
+    echo "  - Auto-renewal set up via cron"
+    echo "  - HTTP requests redirect to HTTPS"
     echo ""
     echo "📊 Server status:"
     run_on_ec2 "cd '$APP_DIR/server' && npx pm2 status"
