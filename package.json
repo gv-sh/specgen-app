@@ -15,6 +15,7 @@
     "deploy:ec2": "chmod +x scripts/deploy-ec2.sh && ./scripts/deploy-ec2.sh",
     "backup:database": "chmod +x scripts/backup-database.sh && ./scripts/backup-database.sh",
     "restore:database": "chmod +x scripts/restore-database.sh && ./scripts/restore-database.sh",
+    "sync-versions": "node scripts/sync-versions.js",
     "postinstall": "chmod +x bin/cli.js"
   },
   "dependencies": {
