@@ -18,9 +18,9 @@
     "postinstall": "chmod +x bin/cli.js"
   },
   "dependencies": {
-    "@gv-sh/specgen-server": "0.11.1",
-    "@gv-sh/specgen-admin": "0.11.0",
-    "@gv-sh/specgen-user": "0.14.11"
+    "@gv-sh/specgen-server": "0.14.0",
+    "@gv-sh/specgen-admin": "0.12.2",
+    "@gv-sh/specgen-user": "1.0.1"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
