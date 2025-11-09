@@ -4,11 +4,11 @@
 module.exports = {
   version: require('./package.json').version,
   description: 'SpecGen Application Package',
-  
+
   // Export script paths for programmatic access
   scripts: {
     setup: require.resolve('./scripts/setup.sh'),
     dev: require.resolve('./scripts/dev.sh'),
-    production: require.resolve('./scripts/production.sh')
+    deploy: require.resolve('./scripts/deploy.sh')
   }
 };

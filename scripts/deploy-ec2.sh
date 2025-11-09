@@ -5,11 +5,39 @@
 
 set -e
 
-# Configuration
-EC2_HOST="ubuntu@ec2-52-66-251-12.ap-south-1.compute.amazonaws.com"
-EC2_KEY="debanshu.pem"
-REPO_URL="https://github.com/gv-sh/specgen-app.git"
-APP_DIR="/home/ubuntu/specgen-app"
+# Configuration - can be overridden with environment variables
+EC2_HOST="${EC2_HOST:-}"
+EC2_KEY="${EC2_KEY:-~/.ssh/id_rsa}"
+REPO_URL="${REPO_URL:-https://github.com/gv-sh/specgen-app.git}"
+APP_DIR="${APP_DIR:-/home/ubuntu/specgen-app}"
+
+# Prompt for EC2 host if not set
+if [ -z "$EC2_HOST" ]; then
+    echo "🔑 Enter your EC2 SSH connection string:"
+    echo "   (e.g., ubuntu@ec2-xx-xx-xx-xx.region.compute.amazonaws.com)"
+    read -p "EC2 Host: " EC2_HOST
+
+    if [ -z "$EC2_HOST" ]; then
+        echo "❌ EC2 host is required!"
+        exit 1
+    fi
+fi
+
+# Prompt for SSH key if the default doesn't exist
+if [ ! -f "$EC2_KEY" ]; then
+    echo "🔑 Enter the path to your SSH key file:"
+    echo "   (default: ~/.ssh/id_rsa)"
+    read -p "SSH Key Path: " INPUT_KEY
+
+    if [ -n "$INPUT_KEY" ]; then
+        EC2_KEY="$INPUT_KEY"
+    fi
+
+    if [ ! -f "$EC2_KEY" ]; then
+        echo "❌ SSH key file '$EC2_KEY' not found!"
+        exit 1
+    fi
+fi
 
 # Prompt for public IP address
 echo "📡 Enter the public IP address or domain for your EC2 instance:"

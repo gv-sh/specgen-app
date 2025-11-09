@@ -7,16 +7,16 @@
     "specgen-app": "./bin/cli.js"
   },
   "scripts": {
-    "setup": "chmod +x scripts/setup.sh && ./scripts/setup.sh",
-    "dev": "chmod +x scripts/dev.sh && ./scripts/dev.sh",
+    "setup": "./scripts/setup.sh",
+    "dev": "./scripts/dev.sh",
     "build": "cd admin && PUBLIC_URL=/admin npm run build && cd ../user && npm run build",
     "start": "cd server && npm start",
-    "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
-    "deploy:ec2": "chmod +x scripts/deploy-ec2.sh && ./scripts/deploy-ec2.sh",
-    "backup:database": "chmod +x scripts/backup-database.sh && ./scripts/backup-database.sh",
-    "restore:database": "chmod +x scripts/restore-database.sh && ./scripts/restore-database.sh",
+    "deploy": "./scripts/deploy.sh",
+    "deploy:ec2": "./scripts/deploy-ec2.sh",
+    "backup:database": "./scripts/backup-database.sh",
+    "restore:database": "./scripts/restore-database.sh",
     "sync-versions": "node scripts/sync-versions.js",
-    "postinstall": "chmod +x bin/cli.js"
+    "postinstall": "chmod +x bin/cli.js && chmod +x scripts/*.sh"
   },
   "dependencies": {
     "@gv-sh/specgen-server": "0.14.0",

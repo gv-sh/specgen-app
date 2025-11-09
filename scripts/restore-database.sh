@@ -5,21 +5,42 @@
 
 set -e
 
-# Configuration
-EC2_HOST="ubuntu@ec2-52-66-251-12.ap-south-1.compute.amazonaws.com"
-EC2_KEY="debanshu.pem"
-APP_DIR="/home/ubuntu/specgen-app"
-LOCAL_BACKUP_DIR="backups"
+# Configuration - can be overridden with environment variables
+EC2_HOST="${EC2_HOST:-}"
+EC2_KEY="${EC2_KEY:-~/.ssh/id_rsa}"
+APP_DIR="${APP_DIR:-/home/ubuntu/specgen-app}"
+LOCAL_BACKUP_DIR="${LOCAL_BACKUP_DIR:-backups}"
+
+# Prompt for EC2 host if not set
+if [ -z "$EC2_HOST" ]; then
+    echo "🔑 Enter your EC2 SSH connection string:"
+    echo "   (e.g., ubuntu@ec2-xx-xx-xx-xx.region.compute.amazonaws.com)"
+    read -p "EC2 Host: " EC2_HOST
+
+    if [ -z "$EC2_HOST" ]; then
+        echo "❌ EC2 host is required!"
+        exit 1
+    fi
+fi
+
+# Prompt for SSH key if the default doesn't exist
+if [ ! -f "$EC2_KEY" ]; then
+    echo "🔑 Enter the path to your SSH key file:"
+    echo "   (default: ~/.ssh/id_rsa)"
+    read -p "SSH Key Path: " INPUT_KEY
+
+    if [ -n "$INPUT_KEY" ]; then
+        EC2_KEY="$INPUT_KEY"
+    fi
+
+    if [ ! -f "$EC2_KEY" ]; then
+        echo "❌ SSH key file '$EC2_KEY' not found!"
+        exit 1
+    fi
+fi
 
 echo "🔄 SpecGen Database Restore Starting..."
 echo "📡 Target: $EC2_HOST"
-
-# Check if key file exists
-if [ ! -f "$EC2_KEY" ]; then
-    echo "❌ SSH key file '$EC2_KEY' not found!"
-    echo "Please ensure the key file is in the current directory."
-    exit 1
-fi
 
 # Function to run commands on EC2
 run_on_ec2() {
